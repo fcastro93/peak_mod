@@ -48,9 +48,16 @@ namespace PeakEmotes.EditorTools
         {
             // Cajas de velocidad. Van enteras: dentro llevan las partículas (GlowCircle,
             // Tinysparkles) y el Animator que las hace girar, que es lo que las vende.
+            // Una caja por CATEGORÍA de power-up. De las tres de velocidad solo se usa la
+            // azul (" 1"): el prefab base es verde y el " 2" morado, comprobado en el
+            // maxColor de cada uno. Las otras dos siguen aquí por si se quiere cambiar de
+            // color desde el config sin volver a construir el bundle.
             "Assets/Epic Toon FX/Prefabs/Interactive/Powerups/PowerBox/Box Colored/PowerboxColSpeed.prefab",
             "Assets/Epic Toon FX/Prefabs/Interactive/Powerups/PowerBox/Box Colored/PowerboxColSpeed 1.prefab",
             "Assets/Epic Toon FX/Prefabs/Interactive/Powerups/PowerBox/Box Colored/PowerboxColSpeed 2.prefab",
+            "Assets/Epic Toon FX/Prefabs/Interactive/Powerups/PowerBox/Box Colored/PowerboxColLightning.prefab",
+            "Assets/Epic Toon FX/Prefabs/Interactive/Powerups/PowerBox/Box Colored/PowerboxColHealth.prefab",
+            "Assets/Epic Toon FX/Prefabs/Interactive/Powerups/PowerBox/Box Colored/PowerboxColStar.prefab",
 
             // Efecto que sale sobre la cabeza al recogerlo.
             "Assets/Epic Toon FX/Prefabs/Interactive/Powerups/PowerBox/Pickup Colored/PowerboxPickupColSpeed.prefab",

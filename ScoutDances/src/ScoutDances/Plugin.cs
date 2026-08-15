@@ -120,6 +120,17 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> CfgTeamMemberSpread = null!;
     internal static ConfigEntry<bool> CfgPullToCampfire = null!;
     internal static ConfigEntry<bool> CfgRandomMap = null!;
+    internal static ConfigEntry<float> CfgBuffFloatHeight = null!;
+    internal static ConfigEntry<float> CfgBuffSpinSpeed = null!;
+    internal static ConfigEntry<float> CfgBuffBob = null!;
+    internal static ConfigEntry<bool> CfgBuffHud = null!;
+    internal static ConfigEntry<float> CfgBuffHudX = null!;
+    internal static ConfigEntry<float> CfgBuffHudBottom = null!;
+    internal static ConfigEntry<float> CfgBuffHudWidth = null!;
+    internal static ConfigEntry<float> CfgBuffSummarySeconds = null!;
+    internal static ConfigEntry<float> CfgBuffInstantMessage = null!;
+    internal static ConfigEntry<float> CfgBuffLaunchForce = null!;
+    internal static ConfigEntry<string> CfgBuffPickupSound = null!;
     internal static ConfigEntry<float> CfgPullDistance = null!;
     internal static ConfigEntry<bool> CfgMapBuffs = null!;
     internal static ConfigEntry<float> CfgBuffsPerLuggage = null!;
@@ -615,6 +626,63 @@ public partial class Plugin : BaseUnityPlugin
                 "misma proporción que todo lo demás.",
                 new AcceptableValueRange<float>(1f, 5f)));
 
+        CfgBuffFloatHeight = Config.Bind(
+            "Buffs", "FloatHeight", 1.25f,
+            new ConfigDescription("A qué altura del suelo flota la caja, en metros. 1.25 " +
+                "es más o menos el pecho de un Scout.",
+                new AcceptableValueRange<float>(0f, 4f)));
+
+        CfgBuffSpinSpeed = Config.Bind(
+            "Buffs", "SpinSpeed", 55f,
+            new ConfigDescription("Grados por segundo que gira la caja sobre sí misma.",
+                new AcceptableValueRange<float>(0f, 360f)));
+
+        CfgBuffBob = Config.Bind(
+            "Buffs", "Bob", 0.25f,
+            new ConfigDescription("Cuánto sube y baja flotando. Cero la deja quieta.",
+                new AcceptableValueRange<float>(0f, 2f)));
+
+        CfgBuffHud = Config.Bind(
+            "Buffs", "ShowHud", true,
+            "Lista de power-ups activos encima de la barra de vida.");
+
+        CfgBuffHudX = Config.Bind(
+            "Buffs", "HudX", 24f,
+            new ConfigDescription("Distancia al borde izquierdo, en píxeles.",
+                new AcceptableValueRange<float>(0f, 800f)));
+
+        CfgBuffHudBottom = Config.Bind(
+            "Buffs", "HudBottom", 150f,
+            new ConfigDescription("Altura sobre el borde inferior, en píxeles. Súbelo si " +
+                "te tapa la barra de vida.",
+                new AcceptableValueRange<float>(0f, 900f)));
+
+        CfgBuffHudWidth = Config.Bind(
+            "Buffs", "HudWidth", 250f,
+            new ConfigDescription("Ancho de la lista, en píxeles.",
+                new AcceptableValueRange<float>(120f, 600f)));
+
+        CfgBuffSummarySeconds = Config.Bind(
+            "Buffs", "SummarySeconds", 5f,
+            new ConfigDescription("Segundos que se ve el resumen del efecto antes de que la " +
+                "entrada se encoja a una línea.",
+                new AcceptableValueRange<float>(0f, 20f)));
+
+        CfgBuffInstantMessage = Config.Bind(
+            "Buffs", "InstantMessage", 5f,
+            new ConfigDescription("Segundos que se queda en pantalla un power-up sin " +
+                "duración, como la curación total.",
+                new AcceptableValueRange<float>(1f, 15f)));
+
+        CfgBuffLaunchForce = Config.Bind(
+            "Buffs", "LaunchForce", 900f,
+            new ConfigDescription("Fuerza del Impulso hacia arriba.",
+                new AcceptableValueRange<float>(100f, 4000f)));
+
+        CfgBuffPickupSound = Config.Bind(
+            "Buffs", "PickupSound", "",
+            "Clip del bundle que suena con el aviso al recoger. Vacío = sin sonido.");
+
         CfgRandomMap = Config.Bind(
             "Equipos", "RandomMap", true,
             "Cada partida cae en un mapa distinto en vez de en el del día. Se elige " +
@@ -900,25 +968,30 @@ public partial class Plugin : BaseUnityPlugin
 
         Blaster = ScoutDances.Weapons.BlasterDefinition.Create(Config);
 
-        // --- Power-ups de velocidad --------------------------------------------------
-        // Los tres usan el mismo modelo de caja en tres colores. El prefab base y sus dos
-        // variantes " 1" y " 2" no dicen en el nombre de qué color son, así que van
-        // asignados por orden; si el color no cuadra con la potencia, se cambia el campo
-        // Model del config sin tocar código.
+        // --- Cajas de power-ups ------------------------------------------------------
+        // Una caja POR CATEGORÍA, no por power-up. El bufo concreto se sortea al abrirla,
+        // así que el jugador ve de qué familia es —y decide si desvía la ruta— pero no cuál
+        // le va a tocar. Con dieciocho power-ups, una caja por cada uno habría llenado el
+        // mapa de modelos distintos y el database de items.
+        //
+        // El azul es 'PowerboxColSpeed 1': los tres de velocidad no dicen el color en el
+        // nombre, y se comprobó en el prefab que el base es verde (g:1), el " 1" azul
+        // (b:1) y el " 2" morado.
         BuffList.Add(Buffs.BuffDefinition.Create(
-            Config, "Turbo", "Turbo", "PowerboxColSpeed",
-            speedMultiplier: 2f, duration: 4f, length: 0.45f,
-            offset: new Vector3(-0.008f, -0.439f, 1.256f)));
+            Config, "Movilidad", "Caja de movilidad", "PowerboxColSpeed 1",
+            Buffs.BuffCategory.Movilidad, length: 0.45f));
 
         BuffList.Add(Buffs.BuffDefinition.Create(
-            Config, "TurboPlus", "Turbo Plus", "PowerboxColSpeed 1",
-            speedMultiplier: 4f, duration: 4f, length: 0.45f,
-            offset: new Vector3(-0.008f, -0.439f, 1.256f)));
+            Config, "Escalada", "Caja de escalada", "PowerboxColLightning",
+            Buffs.BuffCategory.Escalada, length: 0.45f));
 
         BuffList.Add(Buffs.BuffDefinition.Create(
-            Config, "TurboMax", "Turbo Max", "PowerboxColSpeed 2",
-            speedMultiplier: 6f, duration: 4f, length: 0.45f,
-            offset: new Vector3(-0.008f, -0.439f, 1.256f)));
+            Config, "Supervivencia", "Caja de supervivencia", "PowerboxColHealth",
+            Buffs.BuffCategory.Supervivencia, length: 0.45f));
+
+        BuffList.Add(Buffs.BuffDefinition.Create(
+            Config, "Especial", "Caja especial", "PowerboxColStar",
+            Buffs.BuffCategory.Especial, length: 0.45f));
 
         SoundSlots.Init(Config);
         InstantAudioCache.Init(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);
@@ -960,6 +1033,8 @@ public partial class Plugin : BaseUnityPlugin
         tunerObject.AddComponent<Props.ModCrateSpawner>();
 
         tunerObject.AddComponent<Teams.MapSeed>();
+        tunerObject.AddComponent<Buffs.BuffHud>();
+        tunerObject.AddComponent<Buffs.Storm>();
         tunerObject.AddComponent<Teams.MapSpawns>();
         tunerObject.AddComponent<Teams.TeamSpawns>();
         tunerObject.AddComponent<Teams.TeamSupplies>();

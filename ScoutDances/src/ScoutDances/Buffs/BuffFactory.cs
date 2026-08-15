@@ -109,14 +109,16 @@ internal static class BuffFactory
         SwapAction(clone, definition);
 
         clone.AddComponent<BuffTag>().DefinitionId = definition.Id;
+        clone.AddComponent<BuffFloat>();
         KeepOutOfLuggage(clone);
 
         new ItemContent(item).Register(mod);
 
+        int inside = BuffCatalog.All.Count(b => b.Category == definition.Category);
+
         Plugin.Log.LogInfo(
-            $"Buff '{clone.name}' registrado (itemID {item.itemID}): " +
-            $"velocidad x{definition.SpeedMultiplier.Value:0.#} durante " +
-            $"{definition.Duration.Value:0.#}s, radio de recogida " +
+            $"Caja '{clone.name}' registrada (itemID {item.itemID}): sortea entre " +
+            $"{inside} power-up(s) de {definition.Category}, radio de recogida " +
             $"{definition.PickupRadius.Value:0.0} m.");
     }
 
@@ -222,8 +224,7 @@ internal static class BuffFactory
 
         var action = clone.AddComponent<BuffAction>();
         action.OnCastFinished = true;
-        action.speedMultiplier = definition.SpeedMultiplier.Value;
-        action.duration = definition.Duration.Value;
+        action.category = (int)definition.Category;
         action.pickupRadius = definition.PickupRadius.Value;
     }
 }

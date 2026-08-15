@@ -28,7 +28,8 @@ internal static class ConfigMigration
     /// 5: cada mochila junto a su dueño en vez de en un corro propio.
     /// 6: las armas salen de cajas propias y ya no de las maletas.
     /// 7: equipos x3 de separación y power-ups x3.
-    internal const int Version = 7;
+    /// 8: cajas por categoría con dieciocho power-ups dentro.
+    internal const int Version = 8;
 
     /// <summary>
     /// Secciones que NUNCA se tocan porque guardan decisiones del jugador.

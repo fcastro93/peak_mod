@@ -18,42 +18,34 @@ internal class BuffDefinition
     internal ConfigEntry<string> DisplayName = null!;
     internal ConfigEntry<string> Model = null!;
     internal ConfigEntry<string> BaseItem = null!;
-    internal ConfigEntry<float> SpeedMultiplier = null!;
-    internal ConfigEntry<float> Duration = null!;
     internal ConfigEntry<float> PickupRadius = null!;
     internal ConfigEntry<float> Length = null!;
     internal ConfigEntry<Vector3> Offset = null!;
     internal ConfigEntry<Vector3> Rotation = null!;
 
+    /// Familia de power-ups que salen de esta caja.
+    internal BuffCategory Category { get; private set; }
+
     internal BuffDefinition(string id) => Id = id;
 
     internal static BuffDefinition Create(
         ConfigFile config, string id, string displayName, string model,
-        float speedMultiplier, float duration, float length, Vector3 offset)
+        BuffCategory category, float length)
     {
         var section = "Buff." + id;
         return new BuffDefinition(id)
         {
+            Category = category,
             DisplayName = config.Bind(section, "Name", displayName,
                 "Nombre visible. OJO: el itemID sale de un hash de este nombre, así que si " +
                 "lo cambias TODOS los jugadores tienen que cambiarlo igual."),
 
             Model = config.Bind(section, "Model", model,
-                "Prefab del bundle. Disponibles: PowerboxColSpeed, PowerboxColSpeed 1, " +
-                "PowerboxColSpeed 2."),
+                "Prefab del bundle. Los de las cajas son PowerboxColSpeed 1 (azul), " +
+                "PowerboxColLightning, PowerboxColHealth y PowerboxColStar."),
 
             BaseItem = config.Bind(section, "BaseItem", "Bugle_Scoutmaster",
                 "Item del juego que se clona; de él solo se aprovecha la pose de agarre."),
-
-            SpeedMultiplier = config.Bind(section, "SpeedMultiplier", speedMultiplier,
-                new ConfigDescription("Multiplicador de velocidad: 2 = el doble de rápido, " +
-                    "1 = sin efecto. Afecta a andar, correr y al control en el aire; la " +
-                    "altura del salto no cambia.",
-                    new AcceptableValueRange<float>(1f, 12f))),
-
-            Duration = config.Bind(section, "Duration", duration,
-                new ConfigDescription("Segundos que dura el efecto.",
-                    new AcceptableValueRange<float>(0.5f, 120f))),
 
             PickupRadius = config.Bind(section, "PickupRadius", 1.6f,
                 new ConfigDescription("A qué distancia se recoge al pasarle por encima, en metros.",
@@ -63,7 +55,7 @@ internal class BuffDefinition
                 new ConfigDescription("Tamaño de la caja en metros. El modelo se mide solo.",
                     new AcceptableValueRange<float>(0.05f, 6f))),
 
-            Offset = config.Bind(section, "ModelOffset", offset,
+            Offset = config.Bind(section, "ModelOffset", Vector3.zero,
                 "Posición respecto a la mano, si queda descolocada."),
 
             Rotation = config.Bind(section, "ModelRotation", Vector3.zero,

@@ -23,11 +23,8 @@ internal class BuffAction : ItemAction
     // prefab, e 'internal' no se serializa: con internal, cada copia nacía con los
     // valores por defecto de la clase en vez de los de su definición.
 
-    /// Multiplicador de velocidad (2 = el doble).
-    public float speedMultiplier = 2f;
-
-    /// Segundos que dura.
-    public float duration = 10f;
+    /// Categoría de la caja, como int porque Unity no serializa enums propios de forma fiable.
+    public int category;
 
     /// A qué distancia se recoge al pasar por encima.
     public float pickupRadius = 1.6f;
@@ -115,8 +112,18 @@ internal class BuffAction : ItemAction
     {
         if (character == null || _item == null || _item.consuming) return;
 
+        // El sorteo lo hace QUIEN LA RECOGE, y el resultado viaja ya decidido. Si cada
+        // cliente sorteara al recibir el aviso, a cada uno le saldría un power-up distinto
+        // y el efecto no cuadraría con lo que ve el dueño.
+        var entry = BuffCatalog.Roll((BuffCategory)category);
+        if (entry == null)
+        {
+            Plugin.Log.LogWarning($"La caja de {(BuffCategory)category} no tiene nada dentro.");
+            return;
+        }
+
         photonView.RPC(nameof(RPC_Grant), RpcTarget.All,
-                       character.photonView.ViewID, speedMultiplier, duration);
+                       character.photonView.ViewID, entry.Id);
 
         // ConsumeDelayed funciona igual en el suelo que en la mano: si no hay portador
         // manda -1 como consumerID y avisa a todos por RPC.
@@ -124,7 +131,7 @@ internal class BuffAction : ItemAction
     }
 
     [PunRPC]
-    void RPC_Grant(int viewId, float multiplier, float seconds)
+    void RPC_Grant(int viewId, string buffId)
     {
         var view = PhotonView.Find(viewId);
         var character = view != null ? view.GetComponent<Character>() : null;
@@ -132,8 +139,19 @@ internal class BuffAction : ItemAction
 
         SpawnPickupEffect(character);
 
-        if (character.IsLocal)
-            PlayerBuff.Grant(character, multiplier, staminaMultiplier: 1f, seconds);
+        // El efecto solo lo aplica el dueño del personaje; a los demás les llega para que
+        // vean el destello y sepan quién lo cogió.
+        if (!character.IsLocal) return;
+
+        var entry = BuffCatalog.ById(buffId);
+        if (entry == null)
+        {
+            Plugin.Log.LogWarning($"Me pasaron un power-up que no conozco: '{buffId}'. " +
+                                  "¿Versiones distintas del mod?");
+            return;
+        }
+
+        ActiveBuffs.Take(character, entry);
     }
 
     /// <summary>

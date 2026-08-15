@@ -274,11 +274,13 @@ internal class MapSpawns : MonoBehaviour
         return buffs[buffs.Count - 1];
     }
 
-    static float Weight(Buffs.BuffDefinition buff)
-    {
-        float strength = buff.SpeedMultiplier.Value - 1f;
-        return strength > 0.01f ? 1f / strength : 1f;
-    }
+    /// <summary>Peso de cada CAJA en el reparto por el mapa.</summary>
+    /// <remarks>
+    /// Todas iguales, y a propósito. Antes se pesaba por lo fuerte que era el power-up,
+    /// pero ahora la caja no es un power-up: es una familia, y dentro ya se sortea con la
+    /// rareza. Volver a pesar aquí sería castigar dos veces a los buenos.
+    /// </remarks>
+    static float Weight(Buffs.BuffDefinition buff) => 1f;
 }
 
 internal static class VectorExtensions
