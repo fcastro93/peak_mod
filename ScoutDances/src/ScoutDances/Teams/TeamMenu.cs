@@ -136,6 +136,9 @@ internal class TeamMenu : MonoBehaviour
                             _label);
         }
 
+        GUILayout.Space(14);
+        DrawVersions();
+
         GUILayout.EndScrollView();
 
         // Botón de desatasco, solo en partida: en el aeropuerto ya te levanta LobbyHealth.
@@ -150,6 +153,44 @@ internal class TeamMenu : MonoBehaviour
         if (GUILayout.Button("Cerrar  (o Esc)", GUILayout.Height(26))) Close();
 
         GUI.DragWindow(new Rect(0, 0, 10000, 18));
+    }
+
+    /// <summary>
+    /// Qué versión del mod lleva cada uno.
+    /// </summary>
+    /// <remarks>
+    /// Existe para poder comprobar de un vistazo, sin pedirle a nadie que abra ficheros ni
+    /// mande logs, que el actualizador está funcionando en los demás ordenadores. El
+    /// contador de descargas de GitHub no sirve para esto: tarda horas en moverse.
+    ///
+    /// Un "?" significa que esa persona lleva una versión anterior a la que empezó a
+    /// publicar este dato, o que no lleva el mod. No se pueden distinguir, y tampoco hace
+    /// falta: en ambos casos lo que toca es que reinicie el juego.
+    /// </remarks>
+    void DrawVersions()
+    {
+        GUILayout.Label("Versiones del mod", _title);
+
+        var others = TeamState.Mismatched();
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Tú", _label, GUILayout.Width(150));
+        GUILayout.Label(TeamState.MyVersion, _label);
+        GUILayout.EndHorizontal();
+
+        foreach (var (name, version) in others)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(name, _label, GUILayout.Width(150));
+            GUILayout.Label(version == "?" ? "?  (versión vieja)" : version, _label);
+            GUILayout.EndHorizontal();
+        }
+
+        GUILayout.Label(others.Count == 0
+            ? "Todos vais igual."
+            : $"{others.Count} van con otra versión. Que cierren y vuelvan a abrir el " +
+              "juego: el mod ya se la habrá descargado.",
+            _label);
     }
 
     /// <summary>

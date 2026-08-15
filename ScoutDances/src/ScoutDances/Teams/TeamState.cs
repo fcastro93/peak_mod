@@ -35,6 +35,9 @@ internal class TeamState : MonoBehaviour, IOnEventCallback
     /// Clave de la propiedad de jugador con el nombre de su equipo.
     const string TeamKey = "sd_team";
 
+    /// Clave con la versión del mod que lleva cada uno.
+    const string VersionKey = "sd_ver";
+
     /// Prefijos de las propiedades de sala.
     const string ScorePrefix = "sd_pts_";      // sd_pts_<equipo>      -> int
     const string FirstPrefix = "sd_first_";    // sd_first_<segmento>  -> string (equipo)
@@ -55,6 +58,80 @@ internal class TeamState : MonoBehaviour, IOnEventCallback
     {
         Instance = this;
         PhotonNetwork.AddCallbackTarget(this);
+        StartCoroutine(AnnounceVersion());
+    }
+
+    /// <summary>
+    /// Mantiene publicada la versión mientras estemos en una sala.
+    /// </summary>
+    /// <remarks>
+    /// En un bucle lento y no una sola vez al entrar: las propiedades de jugador se pierden
+    /// al salir de la sala, y este objeto sobrevive a los cambios de escena. Cada 5 segundos
+    /// no le cuesta nada a nadie, y <c>PublishVersion</c> no manda nada si ya está puesta.
+    /// </remarks>
+    System.Collections.IEnumerator AnnounceVersion()
+    {
+        var wait = new WaitForSeconds(5f);
+
+        while (true)
+        {
+            yield return wait;
+            PublishVersion();
+        }
+    }
+
+    // ------------------------------------------------------------------ versiones
+
+    /// <summary>Versión del mod de un jugador, o "?" si no la ha publicado.</summary>
+    /// <remarks>
+    /// Devuelve "?" tanto para quien no lleva el mod como para quien lleva una versión
+    /// anterior a esta: la propiedad no existía, así que no hay forma de distinguirlos.
+    /// </remarks>
+    internal static string VersionOf(Photon.Realtime.Player? player)
+    {
+        if (player == null) return "?";
+        return player.CustomProperties != null &&
+               player.CustomProperties.TryGetValue(VersionKey, out var value) && value is string v
+            ? v
+            : "?";
+    }
+
+    internal static string MyVersion => Plugin.Instance.Info.Metadata.Version.ToString();
+
+    /// <summary>
+    /// Anuncia a la sala qué versión llevo.
+    /// </summary>
+    /// <remarks>
+    /// Es la única forma de saber, sin pedirle a nadie que abra ficheros, si el
+    /// actualizador está haciendo su trabajo en los demás ordenadores. El contador de
+    /// descargas de GitHub no vale: tarda horas en moverse.
+    ///
+    /// Se vuelve a mandar en cada entrada a sala porque las propiedades de jugador se
+    /// borran al salir.
+    /// </remarks>
+    internal static void PublishVersion()
+    {
+        if (!PhotonNetwork.InRoom) return;
+
+        if (VersionOf(PhotonNetwork.LocalPlayer) == MyVersion) return;   // ya está puesta
+
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable { [VersionKey] = MyVersion });
+    }
+
+    /// <summary>Quién va con una versión distinta a la mía.</summary>
+    internal static List<(string Name, string Version)> Mismatched()
+    {
+        var list = new List<(string, string)>();
+
+        foreach (var player in PhotonNetwork.PlayerList)
+        {
+            if (player == null || player.IsLocal) continue;
+
+            var version = VersionOf(player);
+            if (version != MyVersion) list.Add((player.NickName ?? "?", version));
+        }
+
+        return list;
     }
 
     void OnDestroy()
