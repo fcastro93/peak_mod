@@ -140,23 +140,75 @@ internal class TeamSpawns : MonoBehaviour
         Plugin.Log.LogInfo($"Reaparecido en el checkpoint {point}, sin items.");
     }
 
-    /// <summary>La hoguera encendida más avanzada, o la salida del equipo.</summary>
+    /// <summary>Dónde devolver a quien acaba de morir.</summary>
+    /// <remarks>
+    /// <b>Por qué no se busca la hoguera recorriendo la escena.</b> Era lo que hacía antes, y
+    /// tiraba a la gente al mar. Al pasar de tramo el juego DESTRUYE lo del anterior —tiene
+    /// un campo llamado <c>viewsToDestoryIfNotAlreadyWhenSwitchingSegments</c>— así que en el
+    /// segundo mapa la hoguera que acababas de encender ya no existe como objeto, y la del
+    /// tramo nuevo todavía no está encendida. La búsqueda no encontraba ninguna y se caía al
+    /// último recurso: <c>SpawnPoint.LocalSpawnPoint</c>, que es la salida del aeropuerto y
+    /// está a kilómetros. De ahí el agua.
+    ///
+    /// Ahora se le pregunta al juego, que lleva la cuenta él solo y no depende de que el
+    /// objeto siga vivo. <c>CurrentBaseCampSpawnPoint</c> es justo el sitio donde te deja al
+    /// entrar en el tramo actual, o sea el checkpoint.
+    ///
+    /// Cada rama deja su rastro en el log: si esto vuelve a fallar, hay que saber por cuál
+    /// se fue sin tener que adivinarlo.
+    /// </remarks>
     static Vector3 LastCheckpoint(Character local)
     {
-        Campfire? best = null;
+        // 1. El punto de entrada del tramo actual, que es la respuesta buena.
+        var basecamp = MapHandler.CurrentBaseCampSpawnPoint;
+        if (basecamp != null)
+            return Grounded(basecamp.position + Vector3.up * 1f, local, "campamento del tramo");
 
-        foreach (var campfire in Object.FindObjectsByType<Campfire>(FindObjectsSortMode.None))
+        // 2. Las hogueras que el juego sigue reconociendo, la de este tramo primero.
+        foreach (var (campfire, label) in new[]
+                 {
+                     (MapHandler.CurrentCampfire, "hoguera del tramo"),
+                     (MapHandler.PreviousCampfire, "hoguera anterior"),
+                 })
         {
-            if (campfire == null || !campfire.Lit) continue;
-            if (best == null || (int)campfire.advanceToSegment > (int)best.advanceToSegment)
-                best = campfire;
+            if (campfire != null)
+                return Grounded(campfire.transform.position + Vector3.up * 1.5f, local, label);
         }
 
-        if (best != null) return best.transform.position + Vector3.up * 1.5f;
+        // 3. Cualquier hoguera encendida que quede en pie.
+        var lit = Object.FindObjectsByType<Campfire>(FindObjectsSortMode.None)
+                        .Where(c => c != null && c.Lit)
+                        .OrderByDescending(c => (int)c.advanceToSegment)
+                        .FirstOrDefault();
 
-        var spawn = SpawnPoint.LocalSpawnPoint;
-        var origin = spawn != null ? spawn.transform.position : local.Center;
+        if (lit != null)
+            return Grounded(lit.transform.position + Vector3.up * 1.5f, local, "hoguera encendida");
 
-        return TeamSpawnPoint(origin, TeamState.MyTeam) + Vector3.up * 0.5f;
+        // 4. Sin nada de lo anterior, en el sitio: quedarse donde moriste es feo, pero es
+        //    dentro del mapa. El punto del aeropuerto ya nos costó un baño.
+        Plugin.Log.LogWarning("No encontré ningún checkpoint; te dejo donde estabas.");
+        return local.Center + Vector3.up * 1f;
+    }
+
+    /// <summary>
+    /// Comprueba que haya suelo debajo y apoya el punto encima.
+    /// </summary>
+    /// <remarks>
+    /// Una red por si el sitio que da el juego queda en el aire o sobre agua. Si no hay
+    /// suelo en 60 m hacia abajo, ese punto no vale y se devuelve al jugador a donde estaba,
+    /// que al menos es terreno de la partida.
+    /// </remarks>
+    static Vector3 Grounded(Vector3 target, Character local, string source)
+    {
+        if (Physics.Raycast(target + Vector3.up * 5f, Vector3.down, out var hit, 60f,
+                            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+        {
+            var landed = hit.point + Vector3.up * 0.5f;
+            Plugin.Log.LogInfo($"Reaparición en '{source}' {landed}.");
+            return landed;
+        }
+
+        Plugin.Log.LogWarning($"'{source}' {target} no tiene suelo debajo; te dejo donde estabas.");
+        return local.Center + Vector3.up * 1f;
     }
 }

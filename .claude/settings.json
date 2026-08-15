@@ -52,7 +52,11 @@
       "PowerShell($env:PATH=\"$env:PATH;C:\\\\Program Files\\\\dotnet;$env:USERPROFILE\\\\.dotnet\\\\tools\"; $env:DOTNET_CLI_TELEMETRY_OPTOUT=\"1\"; Set-Location \"c:\\\\Users\\\\fcast\\\\OneDrive\\\\Documentos\\\\work\\\\juegos\\\\peak\\\\ScoutDances\"; dotnet build -c Debug 2>&1 | Select-Object -Last 45 | Out-String -Width 200)",
       "PowerShell($env:PATH=\"$env:PATH;C:\\\\Program Files\\\\dotnet;$env:USERPROFILE\\\\.dotnet\\\\tools\"; $env:DOTNET_CLI_TELEMETRY_OPTOUT=\"1\"; Set-Location \"c:\\\\Users\\\\fcast\\\\OneDrive\\\\Documentos\\\\work\\\\juegos\\\\peak\\\\ScoutDances\"; dotnet build -c Debug 2>&1 | Select-Object -Last 30 | Out-String -Width 200; Write-Output \"== deployed? ==\"; Get-ChildItem \"D:\\\\SteamLibrary\\\\steamapps\\\\common\\\\PEAK\\\\BepInEx\\\\plugins\" -Recurse | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 160)",
       "PowerShell(foreach \\($p in @\\(\"WaporVave/PEAKEmoteLib\",\"PEAKModding/PEAKLib_UI\",\"PEAKModding/PEAKLib_Core\"\\)\\) { $u=\"https://thunderstore.io/api/experimental/package/$p/\"; try { $r = Invoke-RestMethod -Uri $u -ErrorAction Stop; Write-Output \"$\\($r.namespace\\)/$\\($r.name\\)  latest=$\\($r.latest.version_number\\)\"; Write-Output \"   deps: $\\($r.latest.dependencies -join ', '\\)\"; Write-Output \"   url : $\\($r.latest.download_url\\)\" } catch { Write-Output \"FAIL $p : $\\($_.Exception.Message\\)\" } })",
-      "PowerShell(& \"C:\\\\Users\\\\fcast\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-fcast-OneDrive-Documentos-work-juegos-peak\\\\a06549ae-38a0-41db-9f82-1aef311b8937\\\\scratchpad\\\\install_deps.ps1\" 2>&1)"
+      "PowerShell(& \"C:\\\\Users\\\\fcast\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-fcast-OneDrive-Documentos-work-juegos-peak\\\\a06549ae-38a0-41db-9f82-1aef311b8937\\\\scratchpad\\\\install_deps.ps1\" 2>&1)",
+      "Bash(curl -sL -o v040.zip \"https://github.com/fcastro93/peak_mod/releases/download/v0.4.0/ScoutDances-completo.zip\")",
+      "Bash(python -c ' *)",
+      "Bash(rm -f v040.zip)",
+      "Bash(dotnet build *)"
     ]
   }
 }
