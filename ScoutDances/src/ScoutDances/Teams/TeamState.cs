@@ -154,6 +154,41 @@ internal class TeamState : MonoBehaviour, IOnEventCallback
 
     internal static string MyTeam => TeamOf(PhotonNetwork.LocalPlayer);
 
+    /// <summary>Qué puesto ocupa un jugador dentro de su equipo, empezando en 0.</summary>
+    /// <remarks>
+    /// Sirve para que dos compañeros no aterricen en las MISMAS coordenadas. Antes el sitio
+    /// de salida se calculaba solo con el nombre del equipo, así que a los tres miembros se
+    /// les mandaba al mismo punto: dos ragdolls incrustados uno dentro de otro, y el motor
+    /// de física haciendo lo que puede. Es lo que se sentía como "bugueo al cargar".
+    ///
+    /// Se ordena por <c>ActorNumber</c>, que Photon asigna y no cambia mientras dure la
+    /// sala. Da igual que cada cliente calcule esto por su cuenta: todos ven la misma lista
+    /// de actores, así que a nadie le toca el puesto de otro. Por nombre no valdría, porque
+    /// dos jugadores pueden llamarse igual.
+    /// </remarks>
+    internal static int SlotInTeam(Photon.Realtime.Player? player)
+    {
+        var team = TeamOf(player);
+        if (player == null || team.Length == 0) return 0;
+
+        var mates = PhotonNetwork.PlayerList
+            .Where(p => p != null && TeamOf(p) == team)
+            .OrderBy(p => p.ActorNumber)
+            .ToList();
+
+        int index = mates.FindIndex(p => p.ActorNumber == player.ActorNumber);
+        return index < 0 ? 0 : index;
+    }
+
+    /// <summary>Cuánta gente hay en el equipo de ese jugador.</summary>
+    internal static int TeamSize(Photon.Realtime.Player? player)
+    {
+        var team = TeamOf(player);
+        if (team.Length == 0) return 1;
+
+        return PhotonNetwork.PlayerList.Count(p => p != null && TeamOf(p) == team);
+    }
+
     /// <summary>Mete al jugador local en un equipo. Cadena vacía = salirse.</summary>
     internal static void JoinTeam(string name)
     {

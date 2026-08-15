@@ -77,15 +77,62 @@ internal class TeamSpawns : MonoBehaviour
         _placed = true;
         _placedFor = key;
 
-        var target = TeamSpawnPoint(spawn.transform.position, team);
+        var target = PersonalSpot(TeamSpawnPoint(spawn.transform.position, team), local);
 
         local.photonView.RPC("WarpPlayerRPC", RpcTarget.All, target, false);
 
         // El número de equipos se registra porque de él depende el reparto: con uno solo
         // no hay a quién separarse y todos caen en el punto de siempre.
         int teams = TeamState.Scoreboard().Count;
+        int slot = TeamState.SlotInTeam(PhotonNetwork.LocalPlayer);
         Plugin.Log.LogInfo($"Salida del equipo '{team}' en {target} " +
-                           $"({teams} equipo(s), separación {Spread:0.#} m).");
+                           $"({teams} equipo(s), separación {Spread:0.#} m, " +
+                           $"puesto {slot + 1} de {TeamState.TeamSize(PhotonNetwork.LocalPlayer)}).");
+    }
+
+    /// <summary>
+    /// Aparta a cada compañero de equipo a su propio hueco, para que no caigan encima.
+    /// </summary>
+    /// <remarks>
+    /// Dos personajes teletransportados a las MISMAS coordenadas se quedan incrustados: los
+    /// dos ragdolls se solapan, el motor intenta separarlos empujando con todo, y el
+    /// resultado son los saltos y sacudidas que se sentían al cargar. No es un fallo de red
+    /// ni de sincronización, es física.
+    ///
+    /// Reparto en círculo por puesto dentro del equipo, no al azar: si fuera aleatorio, dos
+    /// podrían sacar sitios casi iguales y volveríamos a lo mismo. Con el puesto, la
+    /// separación está garantizada.
+    ///
+    /// El radio crece con el tamaño del equipo para que el hueco entre dos vecinos no
+    /// dependa de cuántos sean: con un radio fijo, seis personas volverían a rozarse.
+    /// </remarks>
+    static Vector3 PersonalSpot(Vector3 teamSpot, Character local)
+    {
+        int size = TeamState.TeamSize(PhotonNetwork.LocalPlayer);
+        if (size <= 1) return teamSpot;
+
+        int slot = TeamState.SlotInTeam(PhotonNetwork.LocalPlayer);
+        float gap = Plugin.CfgTeamMemberSpread.Value;
+
+        // Radio que mantiene 'gap' metros de arco entre vecinos.
+        float radius = Mathf.Max(gap, gap * size / (2f * Mathf.PI));
+        float angle = slot / (float)size * Mathf.PI * 2f;
+
+        var spot = teamSpot + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+
+        // Apoyado en el suelo, como el punto del equipo: el corro puede caer en una cuesta.
+        if (Physics.Raycast(spot + Vector3.up * 8f, Vector3.down, out var ground, 30f,
+                            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+        {
+            spot.y = ground.point.y + 0.5f;
+        }
+        else
+        {
+            // Sin suelo bajo su hueco, mejor el punto del equipo que el vacío.
+            return teamSpot;
+        }
+
+        return spot;
     }
 
     /// <summary>Reparte los equipos en círculo alrededor de un punto.</summary>
@@ -131,7 +178,9 @@ internal class TeamSpawns : MonoBehaviour
         if (Time.time < _reviveAt) return;
         _reviveAt = 0f;
 
-        var point = LastCheckpoint(local);
+        // Con su hueco propio: dos compañeros que mueren a la vez volverían al mismo punto
+        // de la hoguera y se incrustarían igual que en la salida.
+        var point = PersonalSpot(LastCheckpoint(local), local);
 
         // applyStatus false: vuelve entero, sin la maldición ni el hambre con que el juego
         // castiga una reanimación normal. DropAllItems ya va dentro del RPC.

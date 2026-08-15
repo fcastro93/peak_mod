@@ -114,6 +114,7 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<bool> CfgMoreLoot = null!;
     internal static ConfigEntry<float> CfgLootPerTeam = null!;
     internal static ConfigEntry<float> CfgLuggageBoost = null!;
+    internal static ConfigEntry<float> CfgTeamMemberSpread = null!;
     internal static ConfigEntry<bool> CfgMapBuffs = null!;
     internal static ConfigEntry<float> CfgBuffsPerLuggage = null!;
     internal static ConfigEntry<float> CfgBuffScatter = null!;
@@ -588,6 +589,14 @@ public partial class Plugin : BaseUnityPlugin
                 "subes, baja también LuggageRarity: si no, suben las armas del mod en la " +
                 "misma proporción que todo lo demás.",
                 new AcceptableValueRange<float>(1f, 5f)));
+
+        CfgTeamMemberSpread = Config.Bind(
+            "Equipos", "TeamMemberSpread", 3f,
+            new ConfigDescription(
+                "Metros entre dos compañeros del mismo equipo al aparecer o reaparecer. " +
+                "Antes caían todos en el MISMO punto y los ragdolls se incrustaban unos " +
+                "en otros: eso era lo que se sentía como que el juego se buguea al cargar.",
+                new AcceptableValueRange<float>(1f, 12f)));
 
         CfgLootPerTeam = Config.Bind(
             "Equipos", "LootPerTeam", 3f,
