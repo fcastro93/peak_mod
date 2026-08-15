@@ -175,11 +175,21 @@ internal class ActiveBuffs : MonoBehaviour
         }
     }
 
+    /// <summary>Multiplicador de alcance de brazo activo, o 1 si no hay ninguno.</summary>
+    /// <remarks>
+    /// Lo lee el parche de <c>CharacterGrabbing</c>. Vive aquí y no allí para que la
+    /// duración se gestione en un solo sitio.
+    /// </remarks>
+    internal static float GrabReach =>
+        Time.time < _grabReachUntil && _grabReach > 0f ? _grabReach : 1f;
+
     void LateUpdate()
     {
         // Caducados fuera. Se limpia aquí y no en cada efecto para que la lista que se
         // pinta y los efectos que se sostienen no puedan discrepar.
         _live.RemoveAll(l => l.Until > 0f && Time.time > l.Until);
+
+        DropFinishedShield();
 
         var character = _character != null ? _character : Character.localCharacter;
         if (character?.data == null) return;
@@ -190,11 +200,13 @@ internal class ActiveBuffs : MonoBehaviour
         else
             _extraJumps = 0;
 
-        if (Time.time < _grabReachUntil)
-            character.data.grabFriendDistance =
-                Mathf.Max(character.data.grabFriendDistance, _baseGrabReach * _grabReach);
-        else
-            _grabReach = 0f;
+        // Los saltos también en jumpsRemaining, no solo en extraJumps: el juego rellena el
+        // primero desde el segundo al pisar suelo, así que sin esto un power-up cogido en
+        // el aire no servía hasta aterrizar — justo cuando ya no hace falta.
+        if (Time.time < _extraJumpsUntil)
+            character.data.jumpsRemaining = Mathf.Max(character.data.jumpsRemaining, _extraJumps);
+
+        if (Time.time >= _grabReachUntil) _grabReach = 0f;
 
         // El frío se resta a cada frame en vez de limpiarlo una vez: sigue subiendo
         // mientras estés en la nieve, así que quitarlo al recoger el termo no serviría de
@@ -210,6 +222,38 @@ internal class ActiveBuffs : MonoBehaviour
         }
     }
 
-    /// Alcance de agarre de fábrica, para multiplicar sobre él y no sobre el ya multiplicado.
-    const float _baseGrabReach = 1f;
+    /// <summary>
+    /// Quita el escudo de la lista cuando ya se ha roto.
+    /// </summary>
+    /// <remarks>
+    /// El escudo no tiene reloj —dura "hasta que te den"— y por eso su entrada no caducaba
+    /// nunca: se quedaba en pantalla el resto de la partida aunque hubiera saltado al primer
+    /// golpe. Se le pregunta al juego si el efecto sigue puesto en vez de intentar adivinar
+    /// cuándo se rompió.
+    /// </remarks>
+    static void DropFinishedShield()
+    {
+        var shield = _live.FirstOrDefault(l => l.Entry.Persistent != null);
+        if (shield == null) return;
+
+        // Un margen antes de mirar: el efecto tarda un instante en registrarse, y sin esto
+        // se borraría la entrada en el mismo frame en que se crea.
+        if (Time.time - shield.Shown < 1f) return;
+
+        try
+        {
+            var character = Character.localCharacter;
+            if (character?.refs?.afflictions == null) return;
+
+            // La sobrecarga devuelve además la instancia por parámetro de salida; aquí solo
+            // interesa el sí o no.
+            if (!character.refs.afflictions.HasAfflictionType(
+                    Peak.Afflictions.Affliction.AfflictionType.BingBongShield, out _))
+            {
+                _live.Remove(shield);
+                Plugin.Log.LogInfo("El escudo se rompió.");
+            }
+        }
+        catch { /* si no se puede consultar, se deja como está */ }
+    }
 }
