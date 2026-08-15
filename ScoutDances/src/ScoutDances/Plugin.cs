@@ -509,9 +509,10 @@ public partial class Plugin : BaseUnityPlugin
             "salida de cada equipo.");
 
         CfgTeamBackpackSpread = Config.Bind(
-            "Equipos", "TeamBackpackSpread", 2.5f,
-            new ConfigDescription("Separación entre las mochilas de un equipo, en metros. " +
-                "Amontonadas se empujan entre ellas y ruedan cuesta abajo.",
+            "Equipos", "TeamBackpackSpread", 1.8f,
+            new ConfigDescription("A cuántos metros de su dueño se deja cada mochila. " +
+                "Antes era el radio de un corro propio de mochilas, que caía casi encima " +
+                "del de los jugadores y aparecías con un bulto entre los pies.",
                 new AcceptableValueRange<float>(0.5f, 15f)));
 
         // Por defecto FALSE ahora que las mochilas se reparten en la salida del equipo: si

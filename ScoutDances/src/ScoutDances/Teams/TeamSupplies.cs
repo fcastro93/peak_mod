@@ -75,8 +75,18 @@ internal class TeamSupplies : MonoBehaviour
 
         int total = 0;
 
-        foreach (var (team, members) in TeamState.Roster())
+        // Agrupados por equipo y ordenados por ActorNumber: EXACTAMENTE el mismo criterio
+        // con el que TeamState.SlotInTeam reparte los puestos. Si aquí se ordenara de otra
+        // forma, la mochila del puesto 2 acabaría en el hueco del puesto 3.
+        var byTeam = Photon.Pun.PhotonNetwork.PlayerList
+            .Where(p => p != null && TeamState.TeamOf(p).Length > 0)
+            .GroupBy(p => TeamState.TeamOf(p));
+
+        foreach (var group in byTeam)
         {
+            var team = group.Key;
+            var members = group.OrderBy(p => p.ActorNumber).ToList();
+
             // El sitio de salida de ESE equipo, el mismo cálculo con el que se coloca a
             // sus jugadores: así las mochilas aparecen donde ellos aterrizan y no en la
             // salida de otro.
@@ -84,13 +94,19 @@ internal class TeamSupplies : MonoBehaviour
 
             for (int i = 0; i < members.Count; i++)
             {
-                // En corro alrededor del punto, separadas: amontonadas en el mismo sitio
-                // se empujan entre ellas y salen rodando cuesta abajo.
-                float angle = i / (float)Mathf.Max(1, members.Count) * Mathf.PI * 2f;
-                var offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle))
-                             * Plugin.CfgTeamBackpackSpread.Value;
+                // Junto al hueco de SU dueño, no en un corro aparte. Antes las mochilas
+                // iban en un círculo de 2.5 m y los jugadores caían en otro de 3: casi el
+                // mismo sitio, así que aparecías con un bulto entre los pies empujándote.
+                var owner = TeamSpawns.PersonalSpot(origin, i, members.Count);
 
-                var position = origin + offset + Vector3.up * 1f;
+                // Un paso hacia fuera del corro, para que quede AL LADO y no debajo.
+                var outward = owner - origin;
+                outward = outward.sqrMagnitude > 0.01f
+                    ? outward.normalized
+                    : Vector3.forward;
+
+                var position = owner + outward * Plugin.CfgTeamBackpackSpread.Value
+                               + Vector3.up * 1f;
 
                 try
                 {

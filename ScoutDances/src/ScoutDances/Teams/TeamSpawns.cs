@@ -106,12 +106,25 @@ internal class TeamSpawns : MonoBehaviour
     /// El radio crece con el tamaño del equipo para que el hueco entre dos vecinos no
     /// dependa de cuántos sean: con un radio fijo, seis personas volverían a rozarse.
     /// </remarks>
-    static Vector3 PersonalSpot(Vector3 teamSpot, Character local)
+    static Vector3 PersonalSpot(Vector3 teamSpot, Character local) =>
+        PersonalSpot(teamSpot, TeamState.SlotInTeam(PhotonNetwork.LocalPlayer),
+                     TeamState.TeamSize(PhotonNetwork.LocalPlayer));
+
+    /// <summary>
+    /// El hueco del puesto <paramref name="slot"/> dentro de un equipo de
+    /// <paramref name="size"/>.
+    /// </summary>
+    /// <remarks>
+    /// Separado para que las mochilas usen EXACTAMENTE la misma cuenta que los jugadores.
+    /// Cuando cada uno la calculaba por su lado, las mochilas caían en un corro de 2.5 m y
+    /// los jugadores en otro de 3 m: casi encima, así que aparecías con un bulto entre los
+    /// pies empujándote. Compartiendo la fórmula, cada uno aterriza en su hueco y su mochila
+    /// está al lado, no debajo.
+    /// </remarks>
+    internal static Vector3 PersonalSpot(Vector3 teamSpot, int slot, int size)
     {
-        int size = TeamState.TeamSize(PhotonNetwork.LocalPlayer);
         if (size <= 1) return teamSpot;
 
-        int slot = TeamState.SlotInTeam(PhotonNetwork.LocalPlayer);
         float gap = Plugin.CfgTeamMemberSpread.Value;
 
         // Radio que mantiene 'gap' metros de arco entre vecinos.

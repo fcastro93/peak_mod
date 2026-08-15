@@ -135,7 +135,31 @@ internal class TeamStatues : MonoBehaviour
     {
         if (_registered || Mod == null) return;
 
-        _prefab = Instantiate(original.gameObject);
+        // Se clona DENTRO de un objeto desactivado, y esto no es un detalle de estilo.
+        // La estatua lleva un PhotonView, y el Awake de un PhotonView registra su ViewID en
+        // una tabla global. Al clonar en caliente, la copia heredaba el ViewID del original
+        // e intentaba registrarlo otra vez:
+        //
+        //     InvalidOperationException: Duplicate key 1593
+        //       at Photon.Pun.PhotonNetwork.RegisterPhotonView
+        //
+        // Esa excepción salía de dentro de Instantiate, así que _prefab se quedaba a nulo y
+        // —lo peor— MATABA la corrutina que la llamaba, dejando las estatuas a medias sin un
+        // solo mensaje de error en el log de BepInEx.
+        //
+        // Unity no ejecuta Awake en un objeto que nace inactivo en la jerarquía, así que
+        // colgándolo de un padre desactivado el PhotonView no llega a registrarse nunca.
+        var crib = new GameObject("ScoutDancesPrefabCrib");
+        crib.SetActive(false);
+        DontDestroyOnLoad(crib);
+
+        _prefab = Instantiate(original.gameObject, crib.transform);
+
+        // Sin ViewID heredado: se lo asigna Photon al instanciarlo de verdad por la red.
+        foreach (var view in _prefab.GetComponentsInChildren<Photon.Pun.PhotonView>(true))
+            view.ViewID = 0;
+
+        _prefab.transform.SetParent(null, false);
         _prefab.SetActive(false);
         DontDestroyOnLoad(_prefab);
         _prefab.name = PrefabId;

@@ -25,7 +25,8 @@ internal static class ConfigMigration
 {
     /// Se sube cuando cambian valores por defecto que la gente debe recibir sí o sí.
     /// 4: el doble de maletas, armas del mod a Epic y power-ups reajustados.
-    internal const int Version = 4;
+    /// 5: cada mochila junto a su dueño en vez de en un corro propio.
+    internal const int Version = 5;
 
     /// <summary>
     /// Secciones que NUNCA se tocan porque guardan decisiones del jugador.
