@@ -71,6 +71,7 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<bool> CfgModCrates = null!;
     internal static ConfigEntry<float> CfgCratesPerLuggage = null!;
     internal static ConfigEntry<float> CfgCrateScatter = null!;
+    internal static ConfigEntry<float> CfgCrateSize = null!;
     internal static ConfigEntry<string> CfgWeaponRarity = null!;
     internal static ConfigEntry<float> CfgOrbSoundNear = null!;
     internal static ConfigEntry<float> CfgOrbSoundFar = null!;
@@ -458,6 +459,12 @@ public partial class Plugin : BaseUnityPlugin
             new ConfigDescription("Cuántas cajas del mod por cada maleta del mapa. 1 = " +
                 "tantas cajas como maletas.",
                 new AcceptableValueRange<float>(0.05f, 3f)));
+
+        CfgCrateSize = Config.Bind(
+            "Armas", "CrateSize", 0.9f,
+            new ConfigDescription("Lado mayor de la caja del mod, en metros. El modelo se " +
+                "mide solo y se escala a esto.",
+                new AcceptableValueRange<float>(0.2f, 4f)));
 
         CfgCrateScatter = Config.Bind(
             "Armas", "CrateScatter", 3f,

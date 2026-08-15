@@ -220,6 +220,40 @@ internal class ModCrateSpawner : MonoBehaviour
 
     static string PrefabPath => ModCrate.PrefabId;
 
+    /// <summary>Mide el modelo entero, en su propio espacio.</summary>
+    static Bounds Measure(GameObject root)
+    {
+        var renderers = root.GetComponentsInChildren<Renderer>(true);
+        if (renderers.Length == 0) return new Bounds(Vector3.up * 0.4f, Vector3.one * 0.8f);
+
+        var bounds = new Bounds(root.transform.InverseTransformPoint(renderers[0].bounds.center),
+                                Vector3.zero);
+
+        foreach (var renderer in renderers)
+        {
+            // Las partículas no cuentan: sus límites cambian solos según cuánta haya viva,
+            // y medir con ellas daría una caja distinta en cada arranque.
+            if (renderer is ParticleSystemRenderer) continue;
+
+            bounds.Encapsulate(new Bounds(
+                root.transform.InverseTransformPoint(renderer.bounds.center),
+                renderer.bounds.size));
+        }
+
+        return bounds;
+    }
+
+    /// <summary>Escala el modelo para que su lado mayor mida lo pedido.</summary>
+    static void FitTo(GameObject root, float meters)
+    {
+        var size = Measure(root).size;
+        float longest = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
+
+        if (longest <= 0.0001f) return;
+
+        root.transform.localScale *= meters / longest;
+    }
+
     /// <summary>
     /// Prepara el prefab de red con el modelo de la caja del aeropuerto.
     /// </summary>
@@ -250,6 +284,16 @@ internal class ModCrateSpawner : MonoBehaviour
             DontDestroyOnLoad(_prefab);
             _prefab.name = ModCrate.PrefabId;
 
+            // IMPRESCINDIBLE, y su ausencia es justo lo que hacía que no se viera ni una:
+            // el shader que viene dentro del bundle es una copia sin variantes compiladas,
+            // así que el objeto existe, se coloca y se sincroniza… pero no se dibuja. En el
+            // log salían las 26 cajas creadas y en el mapa no había ninguna.
+            PropBuilder.RebindShaders(_prefab);
+
+            // A tamaño de caja de verdad. El prefab del bundle viene a la escala que tuviera
+            // en Unity, que no tiene por qué parecerse a un metro del juego.
+            FitTo(_prefab, Plugin.CfgCrateSize.Value);
+
             // Hace falta un PhotonView propio para que "ya la abrieron" viaje a los demás.
             if (_prefab.GetComponent<PhotonView>() == null)
                 _prefab.AddComponent<PhotonView>();
@@ -257,12 +301,15 @@ internal class ModCrateSpawner : MonoBehaviour
             if (_prefab.GetComponent<ModCrate>() == null)
                 _prefab.AddComponent<ModCrate>();
 
-            // Un colisionador para poder apuntarla; el modelo del bundle no trae ninguno.
+            // Un colisionador a la medida del modelo, no de un tamaño inventado: si fuera
+            // más pequeño habría que apuntar al aire para pulsarla, y si fuera más grande
+            // te la encontrarías desde lejos sin verla.
             if (_prefab.GetComponentInChildren<Collider>(true) == null)
             {
+                var bounds = Measure(_prefab);
                 var box = _prefab.AddComponent<BoxCollider>();
-                box.size = new Vector3(0.6f, 0.6f, 0.6f);
-                box.center = new Vector3(0f, 0.3f, 0f);
+                box.size = bounds.size;
+                box.center = bounds.center;
             }
 
             NetworkPrefabManager.RegisterNetworkPrefab(ModCrate.PrefabId, _prefab);
