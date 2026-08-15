@@ -115,6 +115,8 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> CfgLootPerTeam = null!;
     internal static ConfigEntry<float> CfgLuggageBoost = null!;
     internal static ConfigEntry<float> CfgTeamMemberSpread = null!;
+    internal static ConfigEntry<bool> CfgPullToCampfire = null!;
+    internal static ConfigEntry<float> CfgPullDistance = null!;
     internal static ConfigEntry<bool> CfgMapBuffs = null!;
     internal static ConfigEntry<float> CfgBuffsPerLuggage = null!;
     internal static ConfigEntry<float> CfgBuffScatter = null!;
@@ -590,6 +592,20 @@ public partial class Plugin : BaseUnityPlugin
                 "subes, baja también LuggageRarity: si no, suben las armas del mod en la " +
                 "misma proporción que todo lo demás.",
                 new AcceptableValueRange<float>(1f, 5f)));
+
+        CfgPullToCampfire = Config.Bind(
+            "Equipos", "PullToCampfire", true,
+            "Cuando un equipo enciende la hoguera y el mapa avanza, sube a la hoguera a " +
+            "quien siguiera escalando por el tramo anterior. Sin esto se quedan en el " +
+            "vacío, porque el juego descarga la zona que dejan atrás.");
+
+        CfgPullDistance = Config.Bind(
+            "Equipos", "PullDistance", 25f,
+            new ConfigDescription(
+                "A partir de cuántos metros de la hoguera se considera que te has quedado " +
+                "atrás. Más cerca de eso no se te mueve: dar un tirón a quien ya está " +
+                "donde debe es peor que no hacer nada.",
+                new AcceptableValueRange<float>(5f, 200f)));
 
         CfgTeamMemberSpread = Config.Bind(
             "Equipos", "TeamMemberSpread", 3f,

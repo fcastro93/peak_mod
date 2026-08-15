@@ -180,6 +180,30 @@ internal class TeamState : MonoBehaviour, IOnEventCallback
         return index < 0 ? 0 : index;
     }
 
+    /// <summary>Puesto de un jugador entre TODOS los de la sala, empezando en 0.</summary>
+    /// <remarks>
+    /// Para repartos que no van por equipos, como el rescate a la hoguera: allí llegan
+    /// jugadores de equipos distintos a la vez y lo que hay que evitar es que dos caigan
+    /// encima, sin importar de quién sean compañeros.
+    ///
+    /// Mismo criterio que <see cref="SlotInTeam"/>: <c>ActorNumber</c>, que no cambia
+    /// mientras dure la sala y todos los clientes ven igual.
+    /// </remarks>
+    internal static int SlotAmongAll(Photon.Realtime.Player? player)
+    {
+        if (player == null) return 0;
+
+        var all = PhotonNetwork.PlayerList
+            .Where(p => p != null)
+            .OrderBy(p => p.ActorNumber)
+            .ToList();
+
+        int index = all.FindIndex(p => p.ActorNumber == player.ActorNumber);
+        return index < 0 ? 0 : index;
+    }
+
+    internal static int PlayerCount => PhotonNetwork.PlayerList?.Length ?? 1;
+
     /// <summary>Cuánta gente hay en el equipo de ese jugador.</summary>
     internal static int TeamSize(Photon.Realtime.Player? player)
     {

@@ -39,6 +39,9 @@ internal class TeamSpawns : MonoBehaviour
     float _awakeSince;
     string _awakeFor = "";
 
+    /// Último tramo visto, para detectar cuándo el mapa avanza.
+    int _lastSegment = int.MinValue;
+
     void Update()
     {
         if (!Plugin.CfgTeams.Value) return;
@@ -46,6 +49,7 @@ internal class TeamSpawns : MonoBehaviour
         var local = Character.localCharacter;
         if (local == null || local.data == null) return;
 
+        PullToCampfire(local);
         PlaceAtTeamSpawn(local);
         CheckRespawn(local);
     }
@@ -100,6 +104,69 @@ internal class TeamSpawns : MonoBehaviour
         Plugin.Log.LogInfo($"Salida del equipo '{team}' en {target} " +
                            $"({teams} equipo(s), separación {Spread:0.#} m, " +
                            $"puesto {slot + 1} de {TeamState.TeamSize(PhotonNetwork.LocalPlayer)}).");
+    }
+
+    /// <summary>
+    /// Sube a la hoguera a quien se quede atrás cuando otro equipo enciende y el mapa avanza.
+    /// </summary>
+    /// <remarks>
+    /// Al avanzar de tramo el juego DESCARGA el anterior. Quien siguiera escalando por ahí
+    /// se queda sin suelo bajo los pies, en el vacío, sin nada que hacer salvo esperar.
+    ///
+    /// <b>Cada uno se rescata a sí mismo.</b> En PEAK cada cliente manda sobre su propio
+    /// personaje, así que no se puede tirar de los demás desde aquí: lo que se hace es que
+    /// todos vigilen el cambio de tramo y quien esté lejos se mueva solo. El resultado es el
+    /// mismo y no hay que pelearse con la autoridad de red.
+    ///
+    /// <b>Solo a los que están lejos.</b> Quien ya estaba en la hoguera no se toca: dar un
+    /// tirón a alguien que está donde debe es peor que no hacer nada.
+    ///
+    /// El sitio sale del puesto entre TODOS los jugadores, no entre los del equipo: aquí
+    /// llegan de equipos distintos a la vez, y lo que hay que evitar es que dos aparezcan
+    /// encima, sean compañeros o no.
+    /// </remarks>
+    void PullToCampfire(Character local)
+    {
+        if (!Plugin.CfgPullToCampfire.Value) return;
+        if (local.inAirport || local.data.dead) return;
+
+        int segment = CurrentSegment();
+
+        // Primera lectura: solo tomar nota, sin mover a nadie.
+        if (_lastSegment == int.MinValue) { _lastSegment = segment; return; }
+        if (segment == _lastSegment) return;
+
+        _lastSegment = segment;
+
+        var checkpoint = LastCheckpoint(local);
+        float distance = Vector3.Distance(local.Center, checkpoint);
+
+        if (distance <= Plugin.CfgPullDistance.Value)
+        {
+            Plugin.Log.LogInfo($"Tramo {segment}: ya estabas en la hoguera ({distance:0} m), " +
+                               "no te muevo.");
+            return;
+        }
+
+        var spot = PersonalSpot(checkpoint,
+                                TeamState.SlotAmongAll(PhotonNetwork.LocalPlayer),
+                                TeamState.PlayerCount);
+
+        local.photonView.RPC("WarpPlayerRPC", RpcTarget.All, spot, true);
+
+        Plugin.Log.LogInfo($"Tramo {segment}: estabas a {distance:0} m, te subo a la " +
+                           $"hoguera en {spot}.");
+    }
+
+    static int CurrentSegment()
+    {
+        try
+        {
+            return Zorro.Core.Singleton<MapHandler>.Instance != null
+                ? (int)Zorro.Core.Singleton<MapHandler>.Instance.GetCurrentSegment()
+                : int.MinValue;
+        }
+        catch { return int.MinValue; }
     }
 
     /// <summary>
