@@ -136,6 +136,13 @@ internal class TeamMenu : MonoBehaviour
                             _label);
         }
 
+        // Solo en la montaña: en el aeropuerto nadie ha subido nada todavía.
+        if (!InLobby)
+        {
+            GUILayout.Space(14);
+            DrawAltitudes();
+        }
+
         GUILayout.Space(14);
         DrawVersions();
 
@@ -153,6 +160,56 @@ internal class TeamMenu : MonoBehaviour
         if (GUILayout.Button("Cerrar  (o Esc)", GUILayout.Height(26))) Close();
 
         GUI.DragWindow(new Rect(0, 0, 10000, 18));
+    }
+
+    /// <summary>
+    /// Hasta dónde ha subido cada equipo, en vivo.
+    /// </summary>
+    /// <remarks>
+    /// Es seguimiento de la carrera SIN chivar posiciones: se ve la altura máxima que ha
+    /// alcanzado cada equipo, no dónde está nadie. Sabes que te sacan 200 m; no por qué
+    /// ladera suben ni si están juntos.
+    ///
+    /// Se marca la diferencia respecto al primero en vez de dejar solo las alturas: entre
+    /// "1420 m" y "1380 m" hay que restar, y lo que se quiere saber de un vistazo es cuánto
+    /// te falta para alcanzarlos.
+    /// </remarks>
+    void DrawAltitudes()
+    {
+        var altitudes = TeamState.Altitudes();
+        if (altitudes.Count == 0) return;
+
+        GUILayout.Label("Altura por equipo", _title);
+
+        float leader = altitudes[0].Meters;
+        int position = 1;
+
+        foreach (var (team, meters, known) in altitudes)
+        {
+            GUILayout.BeginHorizontal();
+
+            GUILayout.Label($"{position}.", _label, GUILayout.Width(24));
+            GUILayout.Label(team + (team == TeamState.MyTeam ? "  (tu equipo)" : ""),
+                            _label, GUILayout.Width(160));
+
+            if (!known)
+            {
+                // Nadie de ese equipo ha publicado altura: o no han salido del aeropuerto,
+                // o van con una versión del mod anterior a esto.
+                GUILayout.Label("—", _label);
+            }
+            else
+            {
+                GUILayout.Label($"{meters:0} m", _label, GUILayout.Width(70));
+
+                float behind = leader - meters;
+                if (behind > 1f) GUILayout.Label($"-{behind:0} m", _label);
+                else if (altitudes.Count > 1) GUILayout.Label("en cabeza", _label);
+            }
+
+            GUILayout.EndHorizontal();
+            position++;
+        }
     }
 
     /// <summary>

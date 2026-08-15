@@ -38,6 +38,9 @@ internal class TeamState : MonoBehaviour, IOnEventCallback
     /// Clave con la versión del mod que lleva cada uno.
     const string VersionKey = "sd_ver";
 
+    /// Clave con la altura máxima alcanzada, en unidades del mundo.
+    const string AltitudeKey = "sd_alt";
+
     /// Prefijos de las propiedades de sala.
     const string ScorePrefix = "sd_pts_";      // sd_pts_<equipo>      -> int
     const string FirstPrefix = "sd_first_";    // sd_first_<segmento>  -> string (equipo)
@@ -71,13 +74,95 @@ internal class TeamState : MonoBehaviour, IOnEventCallback
     /// </remarks>
     System.Collections.IEnumerator AnnounceVersion()
     {
-        var wait = new WaitForSeconds(5f);
+        var wait = new WaitForSeconds(1.5f);
 
         while (true)
         {
             yield return wait;
             PublishVersion();
+            PublishAltitude();
         }
+    }
+
+    // ------------------------------------------------------------------ altura
+
+    /// Altura máxima que ha alcanzado el jugador local en esta partida.
+    static float _myPeak = float.MinValue;
+
+    /// <summary>
+    /// Publica hasta dónde ha subido el jugador local.
+    /// </summary>
+    /// <remarks>
+    /// Es un marcador de por dónde va cada equipo SIN chivar posiciones: se manda un único
+    /// número, la altura máxima alcanzada, no unas coordenadas. Sabes que el rival te saca
+    /// 200 m, no por qué ladera está subiendo.
+    ///
+    /// Se manda solo cuando sube de verdad. Las propiedades de jugador van por la red a
+    /// todos los clientes, y republicar un número que no ha cambiado —o que cambia por
+    /// centímetros al respirar el ragdoll— sería tráfico constante para nada.
+    ///
+    /// El máximo se reinicia en el aeropuerto, que es donde empieza una partida nueva. Sin
+    /// eso, el récord de la partida anterior se quedaría pegado toda la siguiente.
+    /// </remarks>
+    internal static void PublishAltitude()
+    {
+        if (!PhotonNetwork.InRoom) return;
+
+        var local = Character.localCharacter;
+        if (local == null || local.data == null) return;
+
+        if (local.inAirport)
+        {
+            if (_myPeak != float.MinValue)
+            {
+                _myPeak = float.MinValue;
+                PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable { [AltitudeKey] = 0f });
+            }
+            return;
+        }
+
+        float height = local.Center.y;
+        if (height <= _myPeak + 1f) return;      // un metro de margen, no cada temblor
+
+        _myPeak = height;
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable { [AltitudeKey] = height });
+    }
+
+    static float AltitudeOf(Photon.Realtime.Player? player)
+    {
+        if (player?.CustomProperties == null) return float.MinValue;
+
+        return player.CustomProperties.TryGetValue(AltitudeKey, out var value) && value is float h
+            ? h
+            : float.MinValue;
+    }
+
+    /// <summary>Altura máxima de cada equipo, en metros, de mayor a menor.</summary>
+    /// <remarks>
+    /// La de un equipo es la de su miembro más alto: lo que interesa es hasta dónde ha
+    /// llegado el equipo, no dónde está el que se quedó atrás.
+    /// </remarks>
+    internal static List<(string Team, float Meters, bool Known)> Altitudes()
+    {
+        var best = new Dictionary<string, float>();
+
+        foreach (var player in PhotonNetwork.PlayerList)
+        {
+            var team = TeamOf(player);
+            if (team.Length == 0) continue;
+
+            float height = AltitudeOf(player);
+
+            if (!best.TryGetValue(team, out var current) || height > current)
+                best[team] = height;
+        }
+
+        return best
+            .Select(e => (e.Key,
+                          e.Value == float.MinValue ? 0f : e.Value * CharacterStats.unitsToMeters,
+                          e.Value != float.MinValue))
+            .OrderByDescending(e => e.Item2)
+            .ToList();
     }
 
     // ------------------------------------------------------------------ versiones
