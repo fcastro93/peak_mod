@@ -35,6 +35,10 @@ internal class TeamSpawns : MonoBehaviour
     bool _placed;
     string _placedFor = "";
 
+    /// Cuándo vimos por primera vez a este personaje fuera del aeropuerto.
+    float _awakeSince;
+    string _awakeFor = "";
+
     void Update()
     {
         if (!Plugin.CfgTeams.Value) return;
@@ -74,6 +78,14 @@ internal class TeamSpawns : MonoBehaviour
         var spawn = SpawnPoint.LocalSpawnPoint;
         if (spawn == null) return;
 
+        // NO mientras se está levantando. Al cargar el mapa el personaje despierta tumbado
+        // y el juego reproduce la animación de ponerse en pie; teletransportarlo justo ahí
+        // deja el ragdoll peleándose con esa animación y se queda dando saltitos en bucle
+        // sin llegar a levantarse nunca. Es el "bugueo al cargar".
+        //
+        // Se espera a que esté de pie de verdad y se reintenta al frame siguiente.
+        if (!StandingUp(local, key)) return;
+
         _placed = true;
         _placedFor = key;
 
@@ -88,6 +100,48 @@ internal class TeamSpawns : MonoBehaviour
         Plugin.Log.LogInfo($"Salida del equipo '{team}' en {target} " +
                            $"({teams} equipo(s), separación {Spread:0.#} m, " +
                            $"puesto {slot + 1} de {TeamState.TeamSize(PhotonNetwork.LocalPlayer)}).");
+    }
+
+    /// <summary>
+    /// ¿Ya terminó de levantarse y se le puede mover sin romperlo?
+    /// </summary>
+    /// <remarks>
+    /// <c>currentRagdollControll</c> es cuánto manda la animación sobre el muñeco: 0 es un
+    /// trapo y 1 es de pie y bajo control. Mientras se levanta va subiendo, y ese es
+    /// justamente el rato en el que no hay que tocarlo.
+    ///
+    /// Se pide además <c>groundedFor</c>, porque el valor de control también llega a 1 en
+    /// el aire, y <c>IsInitialized</c>, que es la propia señal del juego de que el personaje
+    /// ya está montado del todo.
+    ///
+    /// <b>Con plazo máximo.</b> Si en 20 segundos no se cumple —un personaje colgado de una
+    /// cuerda, uno al que llevan en brazos— se coloca igualmente. Quedarse sin separar a los
+    /// equipos es un fastidio; quedarse esperando para siempre y no separarlos nunca, peor.
+    /// </remarks>
+    bool StandingUp(Character local, string key)
+    {
+        if (_awakeFor != key)
+        {
+            _awakeFor = key;
+            _awakeSince = Time.time;
+        }
+
+        bool late = Time.time - _awakeSince > 20f;
+
+        bool ready = local.IsInitialized &&
+                     !local.data.dead && !local.data.passedOut &&
+                     local.data.currentRagdollControll > 0.9f &&
+                     local.data.groundedFor > 0.4f;
+
+        if (ready || late)
+        {
+            if (late && !ready)
+                Plugin.Log.LogWarning("Se acabó el plazo esperando a que te levantaras; " +
+                                      "te coloco igual.");
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
