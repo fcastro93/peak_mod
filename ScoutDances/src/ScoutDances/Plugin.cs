@@ -436,8 +436,13 @@ public partial class Plugin : BaseUnityPlugin
             "esto solo salen de la caja de pruebas del aeropuerto.");
 
         CfgWeaponRarity = Config.Bind(
-            "Armas", "LuggageRarity", "Rare",
-            new ConfigDescription("Cómo de raro es encontrar un arma en una maleta.",
+            "Armas", "LuggageRarity", "Epic",
+            new ConfigDescription(
+                "Cómo de raro es encontrar un arma en una maleta. Va emparejado con " +
+                "LuggageBoost: al subir las maletas hay que bajar la rareza, o el mapa se " +
+                "llena de armas del mod y no salen curas ni comida. Los pesos del juego " +
+                "son Common 100, Uncommon 50, Rare 35, Epic 20, Legendary 15, Mythic 6, " +
+                "RidiculouslyRare 3.",
                 new AcceptableValueList<string>("Common", "Uncommon", "Rare", "Epic",
                                                 "Legendary", "Mythic", "RidiculouslyRare")));
 
@@ -577,9 +582,11 @@ public partial class Plugin : BaseUnityPlugin
             "equipos compitiendo por el mismo botín, la cantidad de fábrica se queda corta.");
 
         CfgLuggageBoost = Config.Bind(
-            "Equipos", "LuggageBoost", 1.3f,
+            "Equipos", "LuggageBoost", 2.0f,
             new ConfigDescription("Cuántas maletas más hay en el mapa, pase lo que pase. " +
-                "1.3 = un 30% más. Se multiplica encima del reparto por equipos.",
+                "2.0 = el doble. Se multiplica encima del reparto por equipos. Si lo " +
+                "subes, baja también LuggageRarity: si no, suben las armas del mod en la " +
+                "misma proporción que todo lo demás.",
                 new AcceptableValueRange<float>(1f, 5f)));
 
         CfgLootPerTeam = Config.Bind(
@@ -593,9 +600,12 @@ public partial class Plugin : BaseUnityPlugin
             "ya colocadas, así que escalan con los equipos y siempre son menos que ellas.");
 
         CfgBuffsPerLuggage = Config.Bind(
-            "Equipos", "BuffsPerLuggage", 0.6f,
+            "Equipos", "BuffsPerLuggage", 0.39f,
             new ConfigDescription("Power-ups por cada maleta. Por debajo de 1 para que " +
-                "siempre haya menos power-ups que maletas.",
+                "siempre haya menos power-ups que maletas. Bajó de 0.6 a 0.39 al doblar " +
+                "las maletas: la cuenta sale de las maletas ya colocadas, así que sin " +
+                "tocarlo habría salido un 54% más de power-ups sin haberlo pedido nadie. " +
+                "0.39 x 2.0 deja los mismos de antes.",
                 new AcceptableValueRange<float>(0.05f, 0.95f)));
 
         CfgBuffScatter = Config.Bind(
