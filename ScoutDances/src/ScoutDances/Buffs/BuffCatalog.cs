@@ -37,25 +37,24 @@ internal class BuffEntry
 /// Los power-ups que existen y cómo se sortean.
 /// </summary>
 /// <remarks>
-/// <b>Por qué un catálogo y no un item por bufo.</b> Antes cada power-up era su propio item
-/// registrado, con su modelo y su sección de config. Con dieciocho eso serían dieciocho
-/// items en el database y dieciocho cajas distintas tiradas por el mapa. Ahora lo que se
-/// registra son las CUATRO categorías, y el bufo concreto se sortea al abrir la caja: el
-/// jugador ve por el color de qué familia es —y decide si merece el desvío— pero no cuál le
-/// va a tocar.
+/// <b>Por qué un catálogo y no un item por bufo.</b> Lo que se registra en el juego son las
+/// CUATRO cajas —una por categoría— y el power-up concreto se sortea al abrirla. El jugador
+/// ve de qué familia es, y decide si merece el desvío, pero no cuál le va a tocar.
 ///
-/// <b>La rareza es el peso del sorteo</b>, no una etiqueta. Un común sale seis veces más que
-/// un épico, que es la regla que ya seguían las cajas de velocidad.
+/// <b>Casi todo viene en tres fuerzas.</b> Es el mismo patrón que ya tenían las cajas de
+/// velocidad con Turbo, Turbo Plus y Turbo Max, y hace que abrir una caja siga teniendo
+/// gracia cuando ya conoces los efectos: no es "me ha tocado salto", es "me ha tocado el
+/// salto bueno". Se declaran con <see cref="Family"/> en vez de a mano porque son la misma
+/// idea tres veces, y escribirlas por separado invita a que se desajusten entre sí.
 ///
-/// <b>Dónde vive la duración de cada efecto.</b> Los que se apoyan en un
-/// <c>Affliction</c> del juego llevan su propio <c>totalTime</c> y se limpian solos; el
-/// contador que guardamos aquí es solo para pintarlo en pantalla. Los que tocan campos del
-/// personaje a mano —saltos extra, coste de trepar— sí dependen de que
-/// <see cref="ActiveBuffs"/> los devuelva a su sitio al caducar.
+/// <b>Los que no escalan se quedan solos.</b> Una curación total no puede ser más total, y
+/// una purga no limpia más que todo. Inventarles niveles sería relleno.
+///
+/// <b>La rareza es el peso del sorteo</b>, no una etiqueta: un común sale seis veces más que
+/// un épico.
 /// </remarks>
 internal static class BuffCatalog
 {
-    /// Peso de cada rareza en el sorteo. Los flojos salen mucho; los buenos, poco.
     static readonly Dictionary<BuffRarity, int> Weights = new()
     {
         [BuffRarity.Comun] = 60,
@@ -63,150 +62,198 @@ internal static class BuffCatalog
         [BuffRarity.Epico] = 10,
     };
 
-    internal static readonly List<BuffEntry> All = new()
+    internal static readonly List<BuffEntry> All = new();
+
+    /// <summary>Un power-up en sus tres fuerzas: común, raro y épico.</summary>
+    static void Family(string id, BuffCategory category,
+                       (string Name, string Summary, float Duration)[] tiers,
+                       Func<int, Action<Character>> apply)
     {
-        // ---------------------------------------------------------------- Movilidad
-        new BuffEntry
-        {
-            Id = "turbo", Name = "Turbo", Rarity = BuffRarity.Comun,
-            Category = BuffCategory.Movilidad, Duration = 4f,
-            Summary = "El doble de rápido",
-            Apply = c => PlayerBuff.Grant(c, 2f, 1f, 4f),
-        },
-        new BuffEntry
-        {
-            Id = "turbo_plus", Name = "Turbo Plus", Rarity = BuffRarity.Raro,
-            Category = BuffCategory.Movilidad, Duration = 4f,
-            Summary = "Cuatro veces más rápido",
-            Apply = c => PlayerBuff.Grant(c, 4f, 1f, 4f),
-        },
-        new BuffEntry
-        {
-            Id = "turbo_max", Name = "Turbo Max", Rarity = BuffRarity.Epico,
-            Category = BuffCategory.Movilidad, Duration = 4f,
-            Summary = "Seis veces más rápido",
-            Apply = c => PlayerBuff.Grant(c, 6f, 1f, 4f),
-        },
-        new BuffEntry
-        {
-            Id = "salto_doble", Name = "Salto doble", Rarity = BuffRarity.Comun,
-            Category = BuffCategory.Movilidad, Duration = 20f,
-            Summary = "Un segundo salto en el aire",
-            Apply = c => ActiveBuffs.SetJumps(c, 1, 20f),
-        },
-        new BuffEntry
-        {
-            Id = "salto_triple", Name = "Salto triple", Rarity = BuffRarity.Raro,
-            Category = BuffCategory.Movilidad, Duration = 15f,
-            Summary = "Dos saltos extra encadenados",
-            Apply = c => ActiveBuffs.SetJumps(c, 2, 15f),
-        },
-        new BuffEntry
-        {
-            Id = "pluma", Name = "Pluma", Rarity = BuffRarity.Comun,
-            Category = BuffCategory.Movilidad, Duration = 10f,
-            Summary = "Caes despacio y sin hacerte daño",
-            Apply = c => c.refs.afflictions.AddAffliction(new Affliction_LowGravity(2, 10f)),
-        },
-        new BuffEntry
-        {
-            Id = "impulso", Name = "Impulso", Rarity = BuffRarity.Raro,
-            Category = BuffCategory.Movilidad, Duration = 0f,
-            Summary = "Te catapulta hacia arriba",
-            Apply = ActiveBuffs.Launch,
-        },
-        new BuffEntry
-        {
-            Id = "zancada", Name = "Zancada", Rarity = BuffRarity.Comun,
-            Category = BuffCategory.Movilidad, Duration = 20f,
-            Summary = "Correr no gasta aguante",
-            Apply = c => PlayerBuff.Grant(c, 1f, 0.15f, 20f),
-        },
+        var rarities = new[] { BuffRarity.Comun, BuffRarity.Raro, BuffRarity.Epico };
 
-        // ---------------------------------------------------------------- Escalada
-        new BuffEntry
+        for (int i = 0; i < tiers.Length && i < rarities.Length; i++)
         {
-            Id = "tiza", Name = "Manos de tiza", Rarity = BuffRarity.Comun,
-            Category = BuffCategory.Escalada, Duration = 25f,
-            Summary = "Trepar cuesta mucho menos",
-            Apply = c => c.refs.afflictions.AddAffliction(
-                new Affliction_ClimbingChalk { totalTime = 25f }),
-        },
-        new BuffEntry
-        {
-            Id = "brazos", Name = "Brazos largos", Rarity = BuffRarity.Raro,
-            Category = BuffCategory.Escalada, Duration = 25f,
-            Summary = "Agarras compañeros desde el triple de lejos",
-            Apply = c => ActiveBuffs.SetGrabReach(c, 3f, 25f),
-        },
-        new BuffEntry
-        {
-            Id = "agarre", Name = "Agarre firme", Rarity = BuffRarity.Epico,
-            Category = BuffCategory.Escalada, Duration = 12f,
-            Summary = "Trepar es gratis",
-            // Aguante infinito y no 'staticClimbCost': ese campo resultó ser un booleano
-            // que elige CÓMO se cobra el trepado, no cuánto. Trepar gasta aguante, así que
-            // aguante infinito es exactamente "trepar gratis" — y lo gestiona el juego.
-            Apply = c => c.refs.afflictions.AddAffliction(
-                new Affliction_InfiniteStamina { totalTime = 12f }),
-        },
+            All.Add(new BuffEntry
+            {
+                Id = $"{id}{i + 1}",
+                Name = tiers[i].Name,
+                Summary = tiers[i].Summary,
+                Category = category,
+                Rarity = rarities[i],
+                Duration = tiers[i].Duration,
+                Apply = apply(i),
+            });
+        }
+    }
 
-        // ------------------------------------------------------------ Supervivencia
-        new BuffEntry
+    static void Single(string id, string name, string summary, BuffCategory category,
+                       BuffRarity rarity, float duration, Action<Character> apply,
+                       string? persistent = null)
+    {
+        All.Add(new BuffEntry
         {
-            Id = "purga", Name = "Purga", Rarity = BuffRarity.Comun,
-            Category = BuffCategory.Supervivencia, Duration = 0f,
-            Summary = "Te quita veneno, frío y esporas",
-            Apply = c => c.refs.afflictions.AddAffliction(new Affliction_ClearAllStatus()),
-        },
-        new BuffEntry
-        {
-            Id = "termo", Name = "Termo", Rarity = BuffRarity.Comun,
-            Category = BuffCategory.Supervivencia, Duration = 40f,
-            Summary = "Inmune al frío",
-            Apply = c => ActiveBuffs.KeepWarm(c, 40f),
-        },
-        new BuffEntry
-        {
-            Id = "comido", Name = "Bien comido", Rarity = BuffRarity.Comun,
-            Category = BuffCategory.Supervivencia, Duration = 60f,
-            Summary = "No pasas hambre",
-            Apply = c => c.refs.afflictions.AddAffliction(
-                new Affliction_NoHunger { totalTime = 60f }),
-        },
-        new BuffEntry
-        {
-            Id = "escudo", Name = "Escudo", Rarity = BuffRarity.Raro,
-            Category = BuffCategory.Supervivencia, Duration = 0f,
-            Persistent = "hasta que te den",
-            Summary = "Aguanta un golpe y se rompe",
-            Apply = c => c.refs.afflictions.AddAffliction(new Affliction_BingBongShield()),
-        },
-        new BuffEntry
-        {
-            Id = "curacion", Name = "Curación total", Rarity = BuffRarity.Raro,
-            Category = BuffCategory.Supervivencia, Duration = 0f,
-            Summary = "Vuelves a estar entero",
-            Apply = c => c.refs.afflictions.AddAffliction(new Affliction_HealAll()),
-        },
-        new BuffEntry
-        {
-            Id = "invencible", Name = "Invencible", Rarity = BuffRarity.Epico,
-            Category = BuffCategory.Supervivencia, Duration = 5f,
-            Summary = "Nada te hace daño",
-            Apply = c => c.refs.afflictions.AddAffliction(
-                new Affliction_Invincibility { totalTime = 5f }),
-        },
+            Id = id, Name = name, Summary = summary, Category = category,
+            Rarity = rarity, Duration = duration, Persistent = persistent, Apply = apply,
+        });
+    }
 
-        // ---------------------------------------------------------------- Especial
-        new BuffEntry
+    static BuffCatalog()
+    {
+        // ------------------------------------------------------------------ Movilidad
+
+        Family("turbo", BuffCategory.Movilidad, new[]
         {
-            Id = "tormenta", Name = "Llamar a la tormenta", Rarity = BuffRarity.Epico,
-            Category = BuffCategory.Especial, Duration = 0f,
-            Summary = "Desatas el viento sobre toda la montaña",
-            Apply = _ => Storm.Summon(),
-        },
-    };
+            ("Turbo",      "El doble de rápido",      4f),
+            ("Turbo Plus", "Cuatro veces más rápido", 4f),
+            ("Turbo Max",  "Seis veces más rápido",   4f),
+        }, tier =>
+        {
+            float[] speed = { 2f, 4f, 6f };
+            return c => PlayerBuff.Grant(c, speed[tier], 1f, 4f);
+        });
+
+        Family("salto", BuffCategory.Movilidad, new[]
+        {
+            ("Salto doble",     "Un segundo salto en el aire", 20f),
+            ("Salto triple",    "Dos saltos extra",            18f),
+            ("Salto cuádruple", "Tres saltos extra",           15f),
+        }, tier =>
+        {
+            int[] jumps = { 1, 2, 3 };
+            float[] seconds = { 20f, 18f, 15f };
+            return c => ActiveBuffs.SetJumps(c, jumps[tier], seconds[tier]);
+        });
+
+        Family("pluma", BuffCategory.Movilidad, new[]
+        {
+            ("Pluma",     "Caes despacio",              10f),
+            ("Pluma Max", "Caes muy despacio",          14f),
+            ("Ingrávido", "Casi no te pesa el cuerpo",  18f),
+        }, tier =>
+        {
+            int[] amount = { 2, 3, 5 };
+            float[] seconds = { 10f, 14f, 18f };
+            return c => c.refs.afflictions.AddAffliction(
+                new Affliction_LowGravity(amount[tier], seconds[tier]));
+        });
+
+        Family("impulso", BuffCategory.Movilidad, new[]
+        {
+            ("Impulso",       "Te empuja hacia arriba",       0f),
+            ("Impulso Plus",  "Te lanza bastante arriba",     0f),
+            ("Catapulta",     "Te dispara hacia el cielo",    0f),
+        }, tier =>
+        {
+            float[] force = { 700f, 1100f, 1700f };
+            return c => ActiveBuffs.Launch(c, force[tier]);
+        });
+
+        Family("zancada", BuffCategory.Movilidad, new[]
+        {
+            ("Zancada",      "Correr gasta la mitad",     20f),
+            ("Zancada Plus", "Correr casi no gasta",      22f),
+            ("Incansable",   "Correr no gasta nada",      25f),
+        }, tier =>
+        {
+            float[] cost = { 0.5f, 0.2f, 0.02f };
+            float[] seconds = { 20f, 22f, 25f };
+            return c => PlayerBuff.Grant(c, 1f, cost[tier], seconds[tier]);
+        });
+
+        // ------------------------------------------------------------------- Escalada
+
+        Family("tiza", BuffCategory.Escalada, new[]
+        {
+            ("Manos de tiza", "Trepar cuesta menos",       18f),
+            ("Tiza Plus",     "Trepar cuesta mucho menos", 30f),
+            ("Tiza infinita", "Trepar apenas cuesta",      45f),
+        }, tier =>
+        {
+            float[] seconds = { 18f, 30f, 45f };
+            return c => c.refs.afflictions.AddAffliction(
+                new Affliction_ClimbingChalk { totalTime = seconds[tier] });
+        });
+
+        Family("brazos", BuffCategory.Escalada, new[]
+        {
+            ("Brazos largos",  "Agarras compañeros del doble de lejos", 25f),
+            ("Brazos de mono", "Del triple de lejos",                   25f),
+            ("Brazos de grúa", "Del quíntuple de lejos",                25f),
+        }, tier =>
+        {
+            float[] reach = { 2f, 3f, 5f };
+            return c => ActiveBuffs.SetGrabReach(c, reach[tier], 25f);
+        });
+
+        Family("agarre", BuffCategory.Escalada, new[]
+        {
+            ("Agarre firme",  "Trepar es gratis un rato",   8f),
+            ("Agarre férreo", "Trepar es gratis",           14f),
+            ("Manos de acero","Trepar es gratis, y mucho",  22f),
+        }, tier =>
+        {
+            float[] seconds = { 8f, 14f, 22f };
+            return c => c.refs.afflictions.AddAffliction(
+                new Affliction_InfiniteStamina { totalTime = seconds[tier] });
+        });
+
+        // -------------------------------------------------------------- Supervivencia
+
+        Family("termo", BuffCategory.Supervivencia, new[]
+        {
+            ("Termo",       "Inmune al frío",             25f),
+            ("Termo Plus",  "Inmune al frío, más rato",   50f),
+            ("Hoguera",     "Inmune al frío mucho rato",  90f),
+        }, tier =>
+        {
+            float[] seconds = { 25f, 50f, 90f };
+            return c => ActiveBuffs.KeepWarm(c, seconds[tier]);
+        });
+
+        Family("comido", BuffCategory.Supervivencia, new[]
+        {
+            ("Bien comido", "No pasas hambre",             45f),
+            ("Banquete",    "No pasas hambre en un rato",  90f),
+            ("Despensa",    "Olvídate del hambre",         160f),
+        }, tier =>
+        {
+            float[] seconds = { 45f, 90f, 160f };
+            return c => c.refs.afflictions.AddAffliction(
+                new Affliction_NoHunger { totalTime = seconds[tier] });
+        });
+
+        Family("invencible", BuffCategory.Supervivencia, new[]
+        {
+            ("Coraza",     "Nada te hace daño",              3f),
+            ("Invencible", "Nada te hace daño, más rato",    6f),
+            ("Inmortal",   "Nada te hace daño en un buen rato", 10f),
+        }, tier =>
+        {
+            float[] seconds = { 3f, 6f, 10f };
+            return c => c.refs.afflictions.AddAffliction(
+                new Affliction_Invincibility { totalTime = seconds[tier] });
+        });
+
+        // Los que no escalan: una curación total no puede ser más total.
+        Single("purga", "Purga", "Te quita veneno, frío y esporas",
+               BuffCategory.Supervivencia, BuffRarity.Comun, 0f,
+               c => c.refs.afflictions.AddAffliction(new Affliction_ClearAllStatus()));
+
+        Single("curacion", "Curación total", "Vuelves a estar entero",
+               BuffCategory.Supervivencia, BuffRarity.Raro, 0f,
+               c => c.refs.afflictions.AddAffliction(new Affliction_HealAll()));
+
+        Single("escudo", "Escudo", "Aguanta un golpe y se rompe",
+               BuffCategory.Supervivencia, BuffRarity.Raro, 0f,
+               c => c.refs.afflictions.AddAffliction(new Affliction_BingBongShield()),
+               persistent: "hasta que te den");
+
+        // ------------------------------------------------------------------- Especial
+
+        Single("tormenta", "Llamar a la tormenta",
+               "Desatas el viento sobre toda la montaña",
+               BuffCategory.Especial, BuffRarity.Epico, 0f, _ => Storm.Summon());
+    }
 
     internal static BuffEntry? ById(string id) => All.FirstOrDefault(b => b.Id == id);
 

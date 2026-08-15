@@ -156,13 +156,15 @@ internal class ActiveBuffs : MonoBehaviour
     /// ragdoll, y teletransportarlo hacia arriba lo dejaría peleándose con la física en vez
     /// de saliendo despedido.
     /// </remarks>
-    internal static void Launch(Character c)
+    internal static void Launch(Character c, float force)
     {
         if (c == null) return;
 
         try
         {
-            c.AddForce(Vector3.up * Plugin.CfgBuffLaunchForce.Value, 1f);
+            // El ajuste del config multiplica, no sustituye: así se puede subir o bajar el
+            // conjunto sin perder la diferencia entre Impulso y Catapulta.
+            c.AddForce(Vector3.up * force * Plugin.CfgBuffLaunchForce.Value, 1f);
 
             // Un poco de gravedad baja para que el salto no acabe en un golpe seco.
             c.refs.afflictions.AddAffliction(new Peak.Afflictions.Affliction_LowGravity(2, 3f));

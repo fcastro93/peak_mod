@@ -29,7 +29,8 @@ internal static class ConfigMigration
     /// 6: las armas salen de cajas propias y ya no de las maletas.
     /// 7: equipos x3 de separación y power-ups x3.
     /// 8: cajas por categoría con dieciocho power-ups dentro.
-    internal const int Version = 8;
+    /// 9: casi todos los power-ups en tres fuerzas.
+    internal const int Version = 9;
 
     /// <summary>
     /// Secciones que NUNCA se tocan porque guardan decisiones del jugador.

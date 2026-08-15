@@ -666,9 +666,10 @@ public partial class Plugin : BaseUnityPlugin
                 new AcceptableValueRange<float>(1f, 15f)));
 
         CfgBuffLaunchForce = Config.Bind(
-            "Buffs", "LaunchForce", 900f,
-            new ConfigDescription("Fuerza del Impulso hacia arriba.",
-                new AcceptableValueRange<float>(100f, 4000f)));
+            "Buffs", "LaunchForce", 1f,
+            new ConfigDescription("Multiplica la fuerza de los impulsos. Cada nivel ya trae " +
+                "la suya; esto sube o baja los tres a la vez sin borrar la diferencia.",
+                new AcceptableValueRange<float>(0.2f, 4f)));
 
         CfgBuffPickupSound = Config.Bind(
             "Buffs", "PickupSound", "",
