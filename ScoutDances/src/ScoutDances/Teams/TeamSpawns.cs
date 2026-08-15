@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Photon.Pun;
 using UnityEngine;
@@ -252,22 +253,123 @@ internal class TeamSpawns : MonoBehaviour
         float radius = Mathf.Max(gap, gap * size / (2f * Mathf.PI));
         float angle = slot / (float)size * Mathf.PI * 2f;
 
-        var spot = teamSpot + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+        var offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
 
-        // Apoyado en el suelo, como el punto del equipo: el corro puede caer en una cuesta.
-        if (Physics.Raycast(spot + Vector3.up * 8f, Vector3.down, out var ground, 30f,
-                            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-        {
-            spot.y = ground.point.y + 0.5f;
-        }
-        else
-        {
-            // Sin suelo bajo su hueco, mejor el punto del equipo que el vacío.
-            return teamSpot;
-        }
-
-        return spot;
+        // Mismas comprobaciones que para la salida del equipo. Aquí la distancia es corta,
+        // así que casi siempre vale el primer intento; pero un compañero puede tocarle
+        // justo el borde de un lago o una roca, y entonces se le busca otro hueco.
+        return SafeNear(teamSpot, offset, $"el puesto {slot + 1}");
     }
+
+    // ------------------------------------------------------- sitio seguro donde aterrizar
+
+    /// <summary>
+    /// Busca suelo firme cerca del sitio ideal, evitando agua, vacío y objetos.
+    /// </summary>
+    /// <remarks>
+    /// Hace falta porque al separar los equipos 90 m del punto de salida, ese punto ya no
+    /// es "el mismo sitio un poco más allá": puede caer en el mar, en un barranco o encima
+    /// de una roca. El punto de salida del juego está elegido a mano y es bueno; a 90 m no
+    /// hay ninguna garantía.
+    ///
+    /// Se prueban varias posiciones y se acepta la primera que pase las tres pruebas. Si
+    /// ninguna pasa, se vuelve al punto de salida original: apiñarse es un fastidio menor
+    /// que aparecer ahogándose.
+    ///
+    /// El orden de las alternativas importa: primero se gira alrededor del origen
+    /// conservando la distancia —para no romper la separación entre equipos, que es lo que
+    /// se buscaba— y solo después se acorta el radio.
+    /// </remarks>
+    static Vector3 SafeNear(Vector3 origin, Vector3 ideal, string what)
+    {
+        foreach (var candidate in Candidates(origin, ideal))
+        {
+            if (TryGround(candidate, out var spot)) return spot;
+        }
+
+        Plugin.Log.LogWarning($"No encontré suelo seguro para {what} cerca de {origin + ideal}; " +
+                              "te dejo en el punto de salida del juego.");
+
+        return TryGround(origin, out var fallback) ? fallback : origin;
+    }
+
+    /// <summary>Posiciones a probar, de la ideal a la más conservadora.</summary>
+    static IEnumerable<Vector3> Candidates(Vector3 origin, Vector3 ideal)
+    {
+        yield return origin + ideal;
+
+        // Giros conservando la distancia: mantienen la separación entre equipos.
+        foreach (float degrees in new[] { 15f, -15f, 30f, -30f, 50f, -50f, 75f, -75f, 110f, -110f, 180f })
+            yield return origin + Quaternion.Euler(0f, degrees, 0f) * ideal;
+
+        // Y si nada vale, acercándose al origen, que es terreno conocido.
+        foreach (float factor in new[] { 0.7f, 0.45f, 0.25f })
+            foreach (float degrees in new[] { 0f, 60f, -60f, 140f, -140f })
+                yield return origin + Quaternion.Euler(0f, degrees, 0f) * ideal * factor;
+    }
+
+    /// <summary>¿Hay suelo firme, seco y despejado bajo este punto?</summary>
+    /// <remarks>
+    /// El rayo sale de MUY arriba y es largo: a 90 m de distancia el terreno puede estar
+    /// decenas de metros por encima o por debajo, y el rayo corto de antes —8 m arriba, 30
+    /// de alcance— simplemente no llegaba, así que se daba por bueno un punto flotando en
+    /// el aire con la altura del origen.
+    /// </remarks>
+    static bool TryGround(Vector3 candidate, out Vector3 spot)
+    {
+        spot = candidate;
+
+        if (!Physics.Raycast(candidate + Vector3.up * 150f, Vector3.down, out var hit, 400f,
+                             Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            return false;
+
+        spot = hit.point + Vector3.up * 0.5f;
+
+        if (InWater(spot)) return false;
+        if (Blocked(spot)) return false;
+
+        return true;
+    }
+
+    static WaterZone[] _waterZones = System.Array.Empty<WaterZone>();
+    static float _waterZonesAt = -999f;
+
+    /// <summary>¿Cae dentro de alguna zona de agua?</summary>
+    /// <remarks>
+    /// La lista se cachea unos segundos a propósito: se prueban hasta 27 posiciones por
+    /// colocación, y recorrer la escena entera en cada una sería un tirón perfectamente
+    /// evitable. Unos segundos de antigüedad no importan, porque las zonas de agua no se
+    /// mueven; solo cambian al cargar un tramo nuevo, y para entonces la caché ya caducó.
+    /// </remarks>
+    static bool InWater(Vector3 point)
+    {
+        try
+        {
+            if (Time.time - _waterZonesAt > 5f)
+            {
+                _waterZones = Object.FindObjectsByType<WaterZone>(FindObjectsSortMode.None);
+                _waterZonesAt = Time.time;
+            }
+
+            foreach (var zone in _waterZones)
+            {
+                if (zone != null && zone.zoneBounds.Contains(point)) return true;
+            }
+        }
+        catch { /* si no se puede consultar, no bloqueamos por ello */ }
+
+        return false;
+    }
+
+    /// <summary>¿Hay algo ocupando ya ese hueco?</summary>
+    /// <remarks>
+    /// La esfera se centra un metro por encima del suelo y es más pequeña que esa altura, o
+    /// sea que no toca el propio terreno: lo que detecta son rocas, árboles, maletas y demás
+    /// cosas dentro de las que no queremos que nadie aparezca.
+    /// </remarks>
+    static bool Blocked(Vector3 spot) =>
+        Physics.CheckSphere(spot + Vector3.up * 1f, 0.6f,
+                            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
 
     /// <summary>Reparte los equipos en círculo alrededor de un punto.</summary>
     internal static Vector3 TeamSpawnPoint(Vector3 origin, string team)
@@ -280,16 +382,7 @@ internal class TeamSpawns : MonoBehaviour
         float angle = index / (float)teams.Count * Mathf.PI * 2f;
         var offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * Spread;
 
-        var target = origin + offset;
-
-        // Apoyado en el suelo: el círculo puede caer en una rampa o sobre un saliente.
-        if (Physics.Raycast(target + Vector3.up * 8f, Vector3.down, out var ground, 30f,
-                            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-        {
-            target.y = ground.point.y + 0.5f;
-        }
-
-        return target;
+        return SafeNear(origin, offset, $"la salida de '{team}'");
     }
 
     void CheckRespawn(Character local)
