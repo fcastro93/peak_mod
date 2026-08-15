@@ -119,6 +119,7 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> CfgLuggageBoost = null!;
     internal static ConfigEntry<float> CfgTeamMemberSpread = null!;
     internal static ConfigEntry<bool> CfgPullToCampfire = null!;
+    internal static ConfigEntry<bool> CfgRandomMap = null!;
     internal static ConfigEntry<float> CfgPullDistance = null!;
     internal static ConfigEntry<bool> CfgMapBuffs = null!;
     internal static ConfigEntry<float> CfgBuffsPerLuggage = null!;
@@ -614,6 +615,12 @@ public partial class Plugin : BaseUnityPlugin
                 "misma proporción que todo lo demás.",
                 new AcceptableValueRange<float>(1f, 5f)));
 
+        CfgRandomMap = Config.Bind(
+            "Equipos", "RandomMap", true,
+            "Cada partida cae en un mapa distinto en vez de en el del día. Se elige " +
+            "siempre de los que el juego ya trae, así que no hay terreno sin probar. El " +
+            "anfitrión sortea el número y se lo reparte a todos; se ve en el F2.");
+
         CfgPullToCampfire = Config.Bind(
             "Equipos", "PullToCampfire", true,
             "Cuando un equipo enciende la hoguera y el mapa avanza, sube a la hoguera a " +
@@ -951,6 +958,8 @@ public partial class Plugin : BaseUnityPlugin
 
         Props.ModCrateSpawner.Mod = Definition;
         tunerObject.AddComponent<Props.ModCrateSpawner>();
+
+        tunerObject.AddComponent<Teams.MapSeed>();
         tunerObject.AddComponent<Teams.MapSpawns>();
         tunerObject.AddComponent<Teams.TeamSpawns>();
         tunerObject.AddComponent<Teams.TeamSupplies>();

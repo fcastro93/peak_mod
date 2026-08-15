@@ -144,6 +144,9 @@ internal class TeamMenu : MonoBehaviour
         }
 
         GUILayout.Space(14);
+        DrawSeed();
+
+        GUILayout.Space(14);
         DrawVersions();
 
         GUILayout.EndScrollView();
@@ -160,6 +163,55 @@ internal class TeamMenu : MonoBehaviour
         if (GUILayout.Button("Cerrar  (o Esc)", GUILayout.Height(26))) Close();
 
         GUI.DragWindow(new Rect(0, 0, 10000, 18));
+    }
+
+    string _seedInput = "";
+
+    /// <summary>
+    /// La semilla del mapa: qué partida os va a tocar.
+    /// </summary>
+    /// <remarks>
+    /// Se enseña siempre y se puede escribir solo en el aeropuerto, porque una vez cargado
+    /// el mapa cambiarla no haría nada.
+    ///
+    /// Merece la pena que sea visible aunque no se toque: todo el mapa sale de ese único
+    /// número, así que apuntarlo es lo que os deja repetir una partida que os gustó.
+    /// </remarks>
+    void DrawSeed()
+    {
+        if (!Plugin.CfgRandomMap.Value) return;
+
+        GUILayout.Label("Mapa", _title);
+
+        int seed = MapSeed.Current;
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Semilla", _label, GUILayout.Width(150));
+        GUILayout.Label(seed == 0 ? "— (mapa del día)" : seed.ToString(), _label);
+        GUILayout.EndHorizontal();
+
+        if (!InLobby || !Photon.Pun.PhotonNetwork.IsMasterClient)
+        {
+            GUILayout.Label(InLobby
+                ? "Solo el anfitrión puede cambiarla."
+                : "Apunta el número si quieres repetir este mapa.", _label);
+            return;
+        }
+
+        GUILayout.BeginHorizontal();
+        _seedInput = GUILayout.TextField(_seedInput, 9, GUILayout.Width(150));
+
+        if (GUILayout.Button("Poner", GUILayout.Width(70)) &&
+            int.TryParse(_seedInput, out var wanted))
+        {
+            MapSeed.Set(wanted);
+            _seedInput = "";
+        }
+
+        if (GUILayout.Button("Sortear otra")) MapSeed.Roll();
+        GUILayout.EndHorizontal();
+
+        GUILayout.Label("Escribe un número para repetir un mapa concreto.", _label);
     }
 
     /// <summary>
