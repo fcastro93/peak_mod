@@ -1,0 +1,14 @@
+# Salida de compilación: se regenera con `dotnet build`.
+ScoutDances/artifacts/
+
+# Zips de distribución: viajan por GitHub Releases, no por el repo.
+dist/
+
+# El AssetBundle son 23 MB de binario que cambian en cada build. Se publica como
+# adjunto de cada release —que es de donde lo baja el actualizador— y se regenera
+# desde Unity con "PEAK Emotes > 3. Construir AssetBundle".
+ScoutDances/assets/scoutdances
+
+# Ajustes locales del editor.
+.vs/
+*.user

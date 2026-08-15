@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Project properties -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>fcastro.ScoutDances</AssemblyName>
+    <AssemblyTitle>ScoutDances</AssemblyTitle>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <!-- ThunderPipe properties -->
+  <PropertyGroup>
+    <IsThunderstorePackable>true</IsThunderstorePackable>
+    <ThunderstoreName>ScoutDances</ThunderstoreName>
+    <ThunderstoreDescription>Bailes custom para el Scout, lanzables con Ctrl+1..Ctrl+9 o desde la rueda de emotes.</ThunderstoreDescription>
+    <!--
+      Communities and package categories metadata for publishing with ThunderPipe.
+      Communities: https://thunderstore.io/api/experimental/community/
+      Categories: https://thunderstore.io/api/experimental/community/peak/category/
+    -->
+    <ThunderstoreCommunities>peak</ThunderstoreCommunities>
+    <ThunderstoreCategories>mods</ThunderstoreCategories>
+  </PropertyGroup>
+
+  <!--
+    Define mod files to copy to the relative BepInEx directory after build
+    and where they are packed to when building a Thunderstore package
+  -->
+  <ItemGroup>
+    <ModFile Include="$(TargetPath)" Destination="plugins/" />
+
+    <!--
+      El AssetBundle con los bailes horneados, el idle de los sonidos y el modelo del
+      kiosco. Sin él el mod carga pero no registra ni un emote, así que tiene que ir
+      tanto en el despliegue local como en el paquete que se comparte.
+      Lo genera unity-tools/Editor/BuildEmoteBundle.cs.
+    -->
+    <ModFile Include="$(SolutionRoot)assets/scoutdances" Destination="plugins/" />
+  </ItemGroup>
+
+  <!-- API de emotes de la comunidad -->
+  <ItemGroup>
+    <PackageReference Include="PEAKEmoteLib" Version="1.0.0" Private="False" />
+    <PackageReference Include="PEAKModding.PEAKLib.Core" Version="*" Private="False" />
+    <PackageReference Include="PEAKModding.PEAKLib.Items" Version="*" Private="False" />
+  </ItemGroup>
+
+  <!-- Thunderstore package metadata -->
+  <ItemGroup>
+    <ThunderstorePackageFile Include="$(SolutionRoot)README.md" />
+    <ThunderstorePackageFile Include="$(SolutionRoot)CHANGELOG.md" />
+    <ThunderstorePackageFile Include="$(SolutionRoot)icon.png" />
+    <ThunderstorePackageFile Include="$(SolutionRoot)LICENSE" />
+
+    <ThunderstoreDependency Include="BepInEx-BepInExPack_PEAK" Version="5.4.75301" />
+    <ThunderstoreDependency Include="WaporVave-PEAKEmoteLib" Version="1.0.0" />
+    <ThunderstoreDependency Include="PEAKModding-PEAKLib_Core" Version="1.7.2" />
+    <ThunderstoreDependency Include="PEAKModding-PEAKLib_Items" Version="1.6.0" />
+  </ItemGroup>
+</Project>
