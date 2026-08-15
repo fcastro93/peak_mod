@@ -27,7 +27,8 @@ internal static class ConfigMigration
     /// 4: el doble de maletas, armas del mod a Epic y power-ups reajustados.
     /// 5: cada mochila junto a su dueño en vez de en un corro propio.
     /// 6: las armas salen de cajas propias y ya no de las maletas.
-    internal const int Version = 6;
+    /// 7: equipos x3 de separación y power-ups x3.
+    internal const int Version = 7;
 
     /// <summary>
     /// Secciones que NUNCA se tocan porque guardan decisiones del jugador.

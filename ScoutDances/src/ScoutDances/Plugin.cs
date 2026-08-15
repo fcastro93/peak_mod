@@ -491,9 +491,10 @@ public partial class Plugin : BaseUnityPlugin
             "punto de salida normal.");
 
         CfgTeamSpawnSpread = Config.Bind(
-            "Equipos", "SpawnSpread", 30f,
-            new ConfigDescription("Cuánto se separan los equipos entre sí, en metros.",
-                new AcceptableValueRange<float>(2f, 60f)));
+            "Equipos", "SpawnSpread", 90f,
+            new ConfigDescription("Cuánto se separan los equipos entre sí, en metros. Es el " +
+                "RADIO del corro, así que entre dos equipos opuestos hay el doble.",
+                new AcceptableValueRange<float>(2f, 300f)));
 
         CfgCheckpointRespawn = Config.Bind(
             "Equipos", "CheckpointRespawn", true,
@@ -646,13 +647,10 @@ public partial class Plugin : BaseUnityPlugin
             "ya colocadas, así que escalan con los equipos y siempre son menos que ellas.");
 
         CfgBuffsPerLuggage = Config.Bind(
-            "Equipos", "BuffsPerLuggage", 0.39f,
-            new ConfigDescription("Power-ups por cada maleta. Por debajo de 1 para que " +
-                "siempre haya menos power-ups que maletas. Bajó de 0.6 a 0.39 al doblar " +
-                "las maletas: la cuenta sale de las maletas ya colocadas, así que sin " +
-                "tocarlo habría salido un 54% más de power-ups sin haberlo pedido nadie. " +
-                "0.39 x 2.0 deja los mismos de antes.",
-                new AcceptableValueRange<float>(0.05f, 0.95f)));
+            "Equipos", "BuffsPerLuggage", 1.17f,
+            new ConfigDescription("Power-ups por cada maleta del mapa. Por encima de 1 sale " +
+                "más de uno por maleta.",
+                new AcceptableValueRange<float>(0.05f, 4f)));
 
         CfgBuffScatter = Config.Bind(
             "Equipos", "BuffScatter", 4f,

@@ -45,6 +45,9 @@ internal class MapSpawns : MonoBehaviour
     /// Generadores ya retocados, para no multiplicar dos veces el mismo.
     static readonly HashSet<int> Boosted = new();
 
+    /// Tramo del último reparto de power-ups, solo para que el log lo diga.
+    int _lastPlacedSegment;
+
     /// <summary>Cuántos equipos hay ahora mismo, mínimo 1.</summary>
     internal static int TeamCount => Mathf.Max(1, TeamState.Roster().Count);
 
@@ -79,10 +82,13 @@ internal class MapSpawns : MonoBehaviour
     /// </remarks>
     static bool PlacesLuggage(PropSpawner spawner)
     {
-        var props = spawner.props;
-        if (props == null) return false;
-
-        foreach (var prop in props)
+        // Se miran las DOS listas. Esto no es prudencia: 'overrideProps' es un interruptor
+        // que hace que el generador use 'overridePropsList' EN VEZ de 'props', y mirando
+        // solo la primera no se reconocía ni un generador de maletas. El resultado es que el
+        // multiplicador nunca llegó a aplicarse —en el log no aparecía una sola línea de
+        // "Maletas:"— y como los power-ups se cuentan a partir de las maletas colocadas,
+        // escaseaban por lo mismo.
+        foreach (var prop in AllProps(spawner))
         {
             if (prop == null) continue;
 
@@ -93,6 +99,17 @@ internal class MapSpawns : MonoBehaviour
         }
 
         return false;
+    }
+
+    /// <summary>Todos los prefabs que puede colocar un generador, de donde sea que salgan.</summary>
+    static IEnumerable<GameObject> AllProps(PropSpawner spawner)
+    {
+        if (spawner.props != null)
+            foreach (var prop in spawner.props) yield return prop;
+
+        var list = spawner.overridePropsList;
+        if (list?.gameObjects != null)
+            foreach (var prop in list.gameObjects) yield return prop;
     }
 
     // ------------------------------------------------------------------ power-ups
@@ -180,9 +197,12 @@ internal class MapSpawns : MonoBehaviour
 
             if (segment == lastSegment) continue;
             lastSegment = segment;
+            _lastPlacedSegment = segment;
 
             int count = Mathf.FloorToInt(luggage.Count * Plugin.CfgBuffsPerLuggage.Value);
-            count = Mathf.Clamp(count, 0, Mathf.Max(0, luggage.Count - 1));   // siempre menos
+            // Tope generoso: antes se obligaba a que hubiera MENOS power-ups que maletas, lo
+            // que impedía subirlos por encima de 1 por maleta aunque se pidiera.
+            count = Mathf.Clamp(count, 0, luggage.Count * 4);
             if (count == 0) continue;
 
             Place(luggage, count);
@@ -220,7 +240,8 @@ internal class MapSpawns : MonoBehaviour
             }
         }
 
-        Plugin.Log.LogInfo($"Repartidos {placed} power-ups entre {luggage.Count} maletas.");
+        Plugin.Log.LogInfo($"Tramo {_lastPlacedSegment}: repartidos {placed} power-ups " +
+                           $"entre {luggage.Count} maletas.");
     }
 
     /// <summary>
