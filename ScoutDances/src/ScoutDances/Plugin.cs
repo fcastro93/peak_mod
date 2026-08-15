@@ -125,9 +125,7 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> CfgBuffSpinSpeed = null!;
     internal static ConfigEntry<float> CfgBuffBob = null!;
     internal static ConfigEntry<bool> CfgBuffHud = null!;
-    internal static ConfigEntry<float> CfgBuffHudX = null!;
-    internal static ConfigEntry<float> CfgBuffHudBottom = null!;
-    internal static ConfigEntry<float> CfgBuffHudWidth = null!;
+    internal static ConfigEntry<float> CfgBuffHudGap = null!;
     internal static ConfigEntry<float> CfgBuffSummarySeconds = null!;
     internal static ConfigEntry<float> CfgBuffInstantMessage = null!;
     internal static ConfigEntry<float> CfgBuffLaunchForce = null!;
@@ -647,21 +645,13 @@ public partial class Plugin : BaseUnityPlugin
             "Buffs", "ShowHud", true,
             "Lista de power-ups activos encima de la barra de vida.");
 
-        CfgBuffHudX = Config.Bind(
-            "Buffs", "HudX", 24f,
-            new ConfigDescription("Distancia al borde izquierdo, en píxeles.",
-                new AcceptableValueRange<float>(0f, 800f)));
-
-        CfgBuffHudBottom = Config.Bind(
-            "Buffs", "HudBottom", 150f,
-            new ConfigDescription("Altura sobre el borde inferior, en píxeles. Súbelo si " +
-                "te tapa la barra de vida.",
-                new AcceptableValueRange<float>(0f, 900f)));
-
-        CfgBuffHudWidth = Config.Bind(
-            "Buffs", "HudWidth", 250f,
-            new ConfigDescription("Ancho de la lista, en píxeles.",
-                new AcceptableValueRange<float>(120f, 600f)));
+        CfgBuffHudGap = Config.Bind(
+            "Buffs", "HudGap", 12f,
+            new ConfigDescription(
+                "Separación entre la lista de power-ups y la barra de aguante, en píxeles. " +
+                "La lista se coloca midiendo dónde ha quedado la barra de verdad, así que " +
+                "se adapta sola a cada resolución; esto solo separa un poco más o menos.",
+                new AcceptableValueRange<float>(0f, 200f)));
 
         CfgBuffSummarySeconds = Config.Bind(
             "Buffs", "SummarySeconds", 5f,
