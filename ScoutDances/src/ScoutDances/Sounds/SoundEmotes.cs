@@ -207,6 +207,7 @@ internal class CharacterSoundPlayer : MonoBehaviour
     Character _character = null!;
     CharacterAnimations _animations = null!;
     AudioSource _source = null!;
+    CharacterVoiceHandler? _voice;
     int _slot = -1;
 
     internal static void PlayFor(Character character, int slot)
@@ -266,6 +267,7 @@ internal class CharacterSoundPlayer : MonoBehaviour
     {
         _character = character;
         _animations = character.refs.animations;
+        _voice = voice;
 
         _source = gameObject.AddComponent<AudioSource>();
         _source.playOnAwake = false;
@@ -311,12 +313,71 @@ internal class CharacterSoundPlayer : MonoBehaviour
 
     void Play(AudioClip clip)
     {
+        // El enrutado se refresca en cada uso, no solo al crear el reproductor. El grupo de
+        // mixer de la voz (Voice1..4) se lo asigna Photon cuando el jugador entra al canal
+        // de voz, que puede ser DESPUÉS de que alguien use la rueda por primera vez: si solo
+        // se copiara al crearlo, ese jugador se quedaba fuera del bus de voz para siempre y
+        // bajarle el volumen no le hacía nada.
+        AdoptVoiceRouting();
+
         _source.Stop();
         _source.clip = clip;
         _source.volume = CurrentVolume();
         _source.time = 0f;
         _source.Play();
-        Plugin.Log.LogInfo($"Sonando '{clip.name}' desde {_character.characterName}.");
+        Plugin.Log.LogInfo($"Sonando '{clip.name}' desde {_character.characterName} " +
+                           $"(grupo {_source.outputAudioMixerGroup?.name ?? "ninguno"}, " +
+                           $"alcance {_source.minDistance:0.#}–{_source.maxDistance:0.#} m).");
+    }
+
+    /// <summary>Copia de la voz el grupo de mixer y la curva de distancia.</summary>
+    void AdoptVoiceRouting()
+    {
+        var voiceSource = _voice != null ? _voice.GetComponent<AudioSource>() : null;
+        if (voiceSource == null) return;
+
+        _source.outputAudioMixerGroup = voiceSource.outputAudioMixerGroup;
+        _source.rolloffMode = voiceSource.rolloffMode;
+        _source.spatialBlend = Mathf.Max(voiceSource.spatialBlend, 0.9f);
+
+        if (voiceSource.rolloffMode == AudioRolloffMode.Custom)
+        {
+            _source.SetCustomCurve(AudioSourceCurveType.CustomRolloff,
+                voiceSource.GetCustomCurve(AudioSourceCurveType.CustomRolloff));
+        }
+
+        float scale = Mathf.Max(0.05f, Plugin.CfgSoundDistanceScale.Value);
+        _source.minDistance = voiceSource.minDistance * scale;
+        _source.maxDistance = voiceSource.maxDistance * scale;
+    }
+
+    /// <summary>
+    /// La misma atenuación por distancia y obstáculos que el juego aplica a la voz.
+    /// </summary>
+    /// <remarks>
+    /// Copiar los ajustes del <c>AudioSource</c> de la voz no bastaba, y esto explica por qué
+    /// un meme se oía por medio mapa mientras que hablando no llegas ni de lejos: el
+    /// <c>AudioSource</c> de la voz está configurado a 10–1000 m, pero PEAK NO se conforma
+    /// con la atenuación de Unity. En <c>CharacterVoiceHandler.Update</c> calcula un factor
+    /// propio —distancia, obstáculos, si estás amordazado— y lo aplica a mano sobre las
+    /// muestras en <c>OnAudioFilterRead</c>. Nuestro audio se saltaba ese segundo filtro y
+    /// conservaba el alcance bruto de 500 m.
+    ///
+    /// Se comprobó en el ensamblado que <c>Update</c> escribe ese campo en cada frame,
+    /// hable el jugador o no, así que el valor sirve aunque nadie esté transmitiendo.
+    /// </remarks>
+    float VoiceFalloff()
+    {
+        if (_voice == null) return 1f;
+
+        try
+        {
+            float falloff = _voice._lastMeasuredFalloff;
+
+            // Si el juego aún no lo ha medido, no silenciamos por las dudas.
+            return falloff <= 0f ? 1f : Mathf.Clamp01(falloff);
+        }
+        catch { return 1f; }
     }
 
     /// <summary>
@@ -346,8 +407,9 @@ internal class CharacterSoundPlayer : MonoBehaviour
             return;
         }
 
-        // Seguimos el slider en vivo: si lo mueves mientras algo suena, se nota ya.
-        _source.volume = CurrentVolume();
+        // Seguimos el slider en vivo: si lo mueves mientras algo suena, se nota ya. Y por la
+        // atenuación de la voz, que cambia cada frame según te acerques o te tapes.
+        _source.volume = CurrentVolume() * VoiceFalloff();
 
         float max = Plugin.CfgSoundMaxSeconds.Value;
         if (max > 0f && _source.time > max) _source.Stop();

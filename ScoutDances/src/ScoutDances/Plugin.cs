@@ -68,6 +68,9 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> CfgOrbScale = null!;
     internal static ConfigEntry<float> CfgBlasterVolume = null!;
     internal static ConfigEntry<bool> CfgWeaponsInLuggage = null!;
+    internal static ConfigEntry<bool> CfgModCrates = null!;
+    internal static ConfigEntry<float> CfgCratesPerLuggage = null!;
+    internal static ConfigEntry<float> CfgCrateScatter = null!;
     internal static ConfigEntry<string> CfgWeaponRarity = null!;
     internal static ConfigEntry<float> CfgOrbSoundNear = null!;
     internal static ConfigEntry<float> CfgOrbSoundFar = null!;
@@ -433,8 +436,25 @@ public partial class Plugin : BaseUnityPlugin
             new ConfigDescription("A partir de esta distancia ya no se oye, en metros.",
                 new AcceptableValueRange<float>(5f, 200f)));
 
+        CfgModCrates = Config.Bind(
+            "Armas", "ModCrates", true,
+            "Reparte cajas del mod por el mapa, del mismo modelo que la del aeropuerto. " +
+            "Al abrirlas dan un arma. Existen para que las armas no ocupen huecos dentro " +
+            "de las maletas normales, que son los que traen curas, comida y cuerdas.");
+
+        CfgCratesPerLuggage = Config.Bind(
+            "Armas", "CratesPerLuggage", 1f,
+            new ConfigDescription("Cuántas cajas del mod por cada maleta del mapa. 1 = " +
+                "tantas cajas como maletas.",
+                new AcceptableValueRange<float>(0.05f, 3f)));
+
+        CfgCrateScatter = Config.Bind(
+            "Armas", "CrateScatter", 3f,
+            new ConfigDescription("A cuántos metros de su maleta se pone cada caja.",
+                new AcceptableValueRange<float>(0.5f, 20f)));
+
         CfgWeaponsInLuggage = Config.Bind(
-            "Armas", "InLuggage", true,
+            "Armas", "InLuggage", false,
             "Las armas del mod aparecen en las maletas normales de todos los biomas. Sin " +
             "esto solo salen de la caja de pruebas del aeropuerto.");
 
@@ -930,6 +950,9 @@ public partial class Plugin : BaseUnityPlugin
 
         Teams.TeamStatues.Mod = Definition;
         tunerObject.AddComponent<Teams.TeamStatues>();
+
+        Props.ModCrateSpawner.Mod = Definition;
+        tunerObject.AddComponent<Props.ModCrateSpawner>();
         tunerObject.AddComponent<Teams.MapSpawns>();
         tunerObject.AddComponent<Teams.TeamSpawns>();
         tunerObject.AddComponent<Teams.TeamSupplies>();
