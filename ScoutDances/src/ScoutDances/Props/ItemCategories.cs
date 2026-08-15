@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace ScoutDances.Props;
@@ -19,14 +20,31 @@ internal static class ItemCategories
 {
     internal static readonly string[] Names =
     {
-        "Todos", "Comida", "Escalada", "Amuletos", "Místicos", "Buffs", "Otros",
+        "Todos", "Comida", "Escalada", "Amuletos", "Místicos", "Buffs", "Del mod", "Otros",
     };
 
-    const int All = 0, Food = 1, Climbing = 2, Amulets = 3, Mystical = 4, Buffs = 5;
+    const int All = 0, Food = 1, Climbing = 2, Amulets = 3, Mystical = 4, Buffs = 5, Mod = 6;
 
     /// Cajón de sastre. Internal porque la caja de pruebas lo usa como respaldo si no
     /// consigue leer el ItemDatabase; con el índice a pelo, añadir una pestaña lo rompía.
-    internal const int Other = 6;
+    internal const int Other = 7;
+
+    /// <summary>
+    /// Nombres de los items del mod, para reconocerlos sin adivinar.
+    /// </summary>
+    /// <remarks>
+    /// Hace falta porque nuestras armas son clones del cuerno del Scoutmaster y heredan su
+    /// etiqueta <c>Mystical</c>: sin esto, la pistola y el imán aparecían mezclados con los
+    /// ídolos y las calaveras del juego. Se compara por nombre y no por la etiqueta porque
+    /// la etiqueta es justo la que miente.
+    ///
+    /// Se construye una vez y se guarda: la caja de pruebas clasifica doscientos items cada
+    /// vez que se abre, y recorrer la lista del mod en cada uno sería trabajo repetido.
+    /// </remarks>
+    static HashSet<string>? _modNames;
+
+    static HashSet<string> ModNames =>
+        _modNames ??= new HashSet<string>(Plugin.ModItemNames(), StringComparer.OrdinalIgnoreCase);
 
     static readonly string[] ClimbingHints =
     {
@@ -48,6 +66,13 @@ internal static class ItemCategories
         // Lo primero, los nuestros: llevan marca propia, así que no hay que adivinar por
         // el nombre como con los del juego.
         if (item.GetComponent<ScoutDances.Buffs.BuffTag>() != null) return Buffs;
+
+        // El resto de lo nuestro —armas y trastos— a su propia pestaña. Va ANTES de mirar
+        // las etiquetas del juego a propósito: son clones del cuerno del Scoutmaster y
+        // arrastran su 'Mystical', así que preguntar por las etiquetas primero los mandaría
+        // a la pestaña equivocada.
+        if (ModNames.Contains(item.name) ||
+            (item.UIData != null && ModNames.Contains(item.UIData.itemName ?? ""))) return Mod;
 
         var tags = item.itemTags;
 

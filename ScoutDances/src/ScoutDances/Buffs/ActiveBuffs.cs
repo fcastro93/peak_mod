@@ -93,15 +93,26 @@ internal class ActiveBuffs : MonoBehaviour
                            $"{BuffCatalog.RarityName(entry.Rarity)}) recogido.");
     }
 
-    /// <summary>El texto grande del juego, el mismo de "Eres un fantasma".</summary>
+    /// <summary>
+    /// El aviso discreto de la esquina.
+    /// </summary>
+    /// <remarks>
+    /// <b>NO se usa <c>SetHeroTitle</c>.</b> Es el del "Eres un fantasma" y parecía la
+    /// elección obvia, pero al probarlo resulta que pinta un cartel a pantalla completa: te
+    /// tapa la montaña entera para decirte que has cogido una Zancada. Sirve para los
+    /// momentos que el juego considera dignos de parar la partida, y recoger un power-up no
+    /// lo es.
+    ///
+    /// La lista de la esquina ya cuenta el nombre y el efecto durante unos segundos, así que
+    /// esto es solo un refuerzo; si el juego no tiene el panel de avisos a mano, no pasa nada
+    /// por quedarse sin él.
+    /// </remarks>
     static void Announce(BuffEntry entry)
     {
         try
         {
-            var gui = GUIManager.instance;
-            if (gui == null) return;
-
-            gui.SetHeroTitle(entry.Name, Plugin.FindClip(Plugin.CfgBuffPickupSound.Value), false);
+            var notifications = Object.FindFirstObjectByType<UI_Notifications>();
+            notifications?.AddNotification($"{entry.Name} — {entry.Summary}");
         }
         catch (System.Exception e)
         {
