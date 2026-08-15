@@ -120,6 +120,7 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> CfgTeamMemberSpread = null!;
     internal static ConfigEntry<bool> CfgPullToCampfire = null!;
     internal static ConfigEntry<bool> CfgRandomMap = null!;
+    internal static ConfigEntry<bool> CfgFogNoRevive = null!;
     internal static ConfigEntry<float> CfgBuffFloatHeight = null!;
     internal static ConfigEntry<float> CfgBuffSpinSpeed = null!;
     internal static ConfigEntry<float> CfgBuffBob = null!;
@@ -683,6 +684,12 @@ public partial class Plugin : BaseUnityPlugin
             "Buffs", "PickupSound", "",
             "Clip del bundle que suena con el aviso al recoger. Vacío = sin sonido.");
 
+        CfgFogNoRevive = Config.Bind(
+            "Equipos", "FogNoRevive", true,
+            "Cuando empieza a subir la niebla (o la lava, o la penumbra: por dentro son el " +
+            "mismo sistema), quien muere se queda fantasma. Ni checkpoint ni estatuas. Es " +
+            "lo que convierte la subida en una cuenta atrás de verdad.");
+
         CfgRandomMap = Config.Bind(
             "Equipos", "RandomMap", true,
             "Cada partida cae en un mapa distinto en vez de en el del día. Se elige " +
@@ -1035,6 +1042,7 @@ public partial class Plugin : BaseUnityPlugin
         tunerObject.AddComponent<Teams.MapSeed>();
         tunerObject.AddComponent<Buffs.BuffHud>();
         tunerObject.AddComponent<Buffs.Storm>();
+        tunerObject.AddComponent<Teams.FogRules>();
         tunerObject.AddComponent<Teams.MapSpawns>();
         tunerObject.AddComponent<Teams.TeamSpawns>();
         tunerObject.AddComponent<Teams.TeamSupplies>();

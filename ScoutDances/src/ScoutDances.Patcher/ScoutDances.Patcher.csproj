@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>fcastro.ScoutDances.Patcher</AssemblyName>
+    <AssemblyTitle>ScoutDances Patcher</AssemblyTitle>
+    <Version>0.18.0</Version>
+
+    <!-- No lo empaqueta ThunderPipe: es una pieza suelta, no un plugin. -->
+    <IsThunderstorePackable>false</IsThunderstorePackable>
+  </PropertyGroup>
+
+  <!--
+    Va a BepInEx/patchers, NO a plugins. Esa carpeta la lee el preloader, que corre ANTES
+    del chainloader: es justo el hueco en el que el DLL del mod todavia no esta cargado y
+    por tanto se puede sobrescribir.
+  -->
+  <ItemGroup>
+    <ModFile Include="$(TargetPath)" Destination="patchers/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Core" Version="5.*" Private="False" />
+    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

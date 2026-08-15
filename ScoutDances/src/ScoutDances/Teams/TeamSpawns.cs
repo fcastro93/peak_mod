@@ -389,6 +389,10 @@ internal class TeamSpawns : MonoBehaviour
     {
         if (!Plugin.CfgCheckpointRespawn.Value) return;
 
+        // Con la niebla subiendo, morir es definitivo: te quedas fantasma. Es lo que le da
+        // peso a la cuenta atrás; si no, morir ahí dentro no costaría nada.
+        if (FogRules.Rising) return;
+
         // En el aeropuerto manda LobbyHealth, que ya te levanta en tu punto de entrada.
         if (local.inAirport) return;
 

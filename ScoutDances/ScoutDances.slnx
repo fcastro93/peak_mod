@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/ScoutDances/ScoutDances.csproj" />
+    <Project Path="src/ScoutDances.Patcher/ScoutDances.Patcher.csproj" />
   </Folder>
 </Solution>

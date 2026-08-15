@@ -28,6 +28,19 @@ internal class Updater : MonoBehaviour
     /// Ficheros que se actualizan, tal como se llaman en la release.
     static readonly string[] Assets = { "fcastro.ScoutDances.dll", "scoutdances" };
 
+    /// <summary>
+    /// El patcher, que va en otra carpeta y sirve para no tener que arrancar dos veces.
+    /// </summary>
+    /// <remarks>
+    /// Se instala desde aquí a propósito: nadie va a copiarlo a mano, y una vez puesto es él
+    /// quien actualiza el mod en el mismo arranque en que descarga. O sea que esta clase
+    /// existe, entre otras cosas, para dejar instalado a su relevo.
+    ///
+    /// Va a <c>BepInEx/patchers</c>, no a <c>plugins</c>: es la carpeta que lee el preloader,
+    /// que corre antes de que se cargue ningún mod.
+    /// </remarks>
+    const string PatcherAsset = "fcastro.ScoutDances.Patcher.dll";
+
     void Start() => StartCoroutine(Run());
 
     IEnumerator Run()
@@ -69,6 +82,11 @@ internal class Updater : MonoBehaviour
             yield break;
         }
 
+        // Lo primero, dejar puesto el patcher aunque el mod esté al día: es lo que hace que
+        // la PRÓXIMA actualización entre en un solo arranque. Si se hiciera solo al detectar
+        // versión nueva, quien ya estuviera actualizado no lo recibiría nunca.
+        yield return EnsurePatcher(json);
+
         var current = Plugin.Instance.Info.Metadata.Version.ToString();
 
         if (Normalize(latest) == Normalize(current))
@@ -95,6 +113,55 @@ internal class Updater : MonoBehaviour
         Plugin.Log.LogWarning(done > 0
             ? $"Actualización a {latest} lista ({done} fichero(s)). REINICIA EL JUEGO para aplicarla."
             : "No pude descargar la actualización; sigue la versión actual.");
+    }
+
+    /// <summary>Deja el patcher instalado en BepInEx/patchers si falta o si cambió.</summary>
+    IEnumerator EnsurePatcher(string json)
+    {
+        string? folder = null;
+
+        try
+        {
+            var plugins = Path.GetDirectoryName(Plugin.Instance.Info.Location)!;
+            var bepinex = Path.GetDirectoryName(plugins)!;
+            folder = Path.Combine(bepinex, "patchers");
+            Directory.CreateDirectory(folder);
+        }
+        catch (System.Exception e)
+        {
+            Plugin.Log.LogInfo($"No pude preparar la carpeta de patchers: {e.Message}");
+            yield break;
+        }
+
+        var link = FindAsset(json, PatcherAsset);
+        if (link == null) yield break;
+
+        var target = Path.Combine(folder, PatcherAsset);
+
+        using var request = UnityWebRequest.Get(link);
+        request.SetRequestHeader("User-Agent", "ScoutDances");
+
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success) yield break;
+
+        var data = request.downloadHandler.data;
+
+        try
+        {
+            // El patcher NO está cargado ahora mismo —lo estuvo durante el preloader y ya
+            // terminó— así que se puede escribir encima sin apartar nada.
+            if (File.Exists(target) && new FileInfo(target).Length == data.Length) yield break;
+
+            File.WriteAllBytes(target, data);
+            Plugin.Log.LogWarning(
+                $"Instalado el actualizador rápido en patchers/ ({data.Length / 1024} KB). " +
+                "A partir del siguiente arranque, las actualizaciones entran sin reiniciar dos veces.");
+        }
+        catch (System.Exception e)
+        {
+            Plugin.Log.LogInfo($"No pude instalar el patcher: {e.Message}");
+        }
     }
 
     IEnumerator Download(string url, string fileName, System.Action<bool> onDone)
