@@ -176,11 +176,15 @@ internal class ModCrateSpawner : MonoBehaviour
             // les llega un objeto cuyo id no saben resolver.
             yield return new WaitForSeconds(2f);
 
-            var luggage = Object.FindObjectsByType<Luggage>(FindObjectsSortMode.None)
-                                .Where(l => l != null && l.GetComponent<RespawnChest>() == null)
-                                .ToList();
+            // Solo las del tramo ACTUAL. Si aún no están puestas viene vacío y se reintenta
+            // en la siguiente vuelta, en vez de repartirlo todo en el tramo que dejamos atrás.
+            var luggage = Teams.SegmentLoot.Current();
 
-            if (luggage.Count == 0) continue;
+            if (luggage.Count == 0)
+            {
+                Plugin.Log.LogInfo($"Tramo {segment}: aún no hay maletas colocadas; reintento.");
+                continue;
+            }
 
             _doneSegment = segment;
 
@@ -200,9 +204,7 @@ internal class ModCrateSpawner : MonoBehaviour
     {
         try
         {
-            return Zorro.Core.Singleton<MapHandler>.Instance != null
-                ? (int)Zorro.Core.Singleton<MapHandler>.Instance.GetCurrentSegment()
-                : 0;
+            return Teams.SegmentLoot.Number();
         }
         catch { return 0; }
     }

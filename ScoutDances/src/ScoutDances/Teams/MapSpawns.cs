@@ -184,9 +184,9 @@ internal class MapSpawns : MonoBehaviour
             var local = Character.localCharacter;
             if (local == null || local.inAirport) continue;      // en el lobby no
 
-            var luggage = Object.FindObjectsByType<Luggage>(FindObjectsSortMode.None)
-                                .Where(l => l != null && l.GetComponent<RespawnChest>() == null)
-                                .ToList();
+            // Solo las del tramo ACTUAL: ver SegmentLoot. Con las de cualquier tramo, todo
+            // se repartía en la zona que acabábamos de dejar atrás.
+            var luggage = SegmentLoot.Current();
 
             if (luggage.Count == 0) continue;
 
