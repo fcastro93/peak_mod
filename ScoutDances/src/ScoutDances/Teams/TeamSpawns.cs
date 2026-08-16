@@ -315,7 +315,7 @@ internal class TeamSpawns : MonoBehaviour
     /// de alcance— simplemente no llegaba, así que se daba por bueno un punto flotando en
     /// el aire con la altura del origen.
     /// </remarks>
-    static bool TryGround(Vector3 candidate, out Vector3 spot)
+    internal static bool TryGround(Vector3 candidate, out Vector3 spot)
     {
         spot = candidate;
 

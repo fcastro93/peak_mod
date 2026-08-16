@@ -211,27 +211,27 @@ internal class MapSpawns : MonoBehaviour
 
     void Place(List<Luggage> luggage, int count)
     {
+        // Repartidos por el tramo y no pegados a una maleta: ver Scatter. Antes las cajas,
+        // las maletas y los power-ups salían los tres del mismo sitio, así que encontrabas
+        // un montón con todo y luego subías un buen rato sin ver nada.
+        var spots = Scatter.Points(
+            luggage.Select(l => l.transform.position).ToList(), count,
+            Plugin.CfgBuffApartFromLuggage.Value, Plugin.CfgBuffApart.Value);
+
         int placed = 0;
 
-        for (int i = 0; i < count; i++)
+        foreach (var spot in spots)
         {
-            var spot = luggage[Random.Range(0, luggage.Count)];
-            if (spot == null) continue;
-
             var definition = PickBuff();
             if (definition == null) continue;
 
-            // Un poco separado de la maleta y algo por encima, para que caiga al suelo en
-            // vez de nacer empotrado dentro de ella.
-            var position = spot.transform.position
-                         + Random.insideUnitSphere.With(y: 0f).normalized * Plugin.CfgBuffScatter.Value
-                         + Vector3.up * 1.2f;
-
             try
             {
+                // Un poco por encima del suelo para que se asiente al caer en vez de nacer
+                // medio enterrado en una cuesta.
                 PhotonNetwork.InstantiateRoomObject(
                     "0_Items/" + Plugin.Definition.Id + ":" + definition.DisplayName.Value,
-                    position, Quaternion.identity);
+                    spot + Vector3.up * 1.2f, Quaternion.identity);
                 placed++;
             }
             catch (System.Exception e)
@@ -241,7 +241,7 @@ internal class MapSpawns : MonoBehaviour
         }
 
         Plugin.Log.LogInfo($"Tramo {_lastPlacedSegment}: repartidos {placed} power-ups " +
-                           $"entre {luggage.Count} maletas.");
+                           $"(pedidos {count}, {luggage.Count} maletas de referencia).");
     }
 
     /// <summary>

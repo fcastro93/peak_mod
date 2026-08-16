@@ -214,32 +214,20 @@ internal class ModCrateSpawner : MonoBehaviour
         int count = Mathf.RoundToInt(luggage.Count * Plugin.CfgCratesPerLuggage.Value);
         if (count <= 0) return;
 
+        // Repartidas por el tramo, NO pegadas a las maletas: ver Teams.Scatter. Antes salían
+        // las tres cosas juntas y te encontrabas un montón con todo y media montaña vacía.
+        var spots = Teams.Scatter.Points(
+            luggage.Select(l => l.transform.position).ToList(), count,
+            Plugin.CfgCrateApartFromLuggage.Value, Plugin.CfgCrateApart.Value);
+
         int placed = 0;
 
-        for (int i = 0; i < count; i++)
+        foreach (var spot in spots)
         {
-            var spot = luggage[Random.Range(0, luggage.Count)];
-            if (spot == null) continue;
-
-            // Apartada de la maleta y algo por encima, para que caiga al suelo en vez de
-            // nacer empotrada dentro de ella.
-            var offset = Random.insideUnitSphere;
-            offset.y = 0f;
-            if (offset.sqrMagnitude < 0.01f) offset = Vector3.forward;
-
-            var position = spot.transform.position
-                         + offset.normalized * Plugin.CfgCrateScatter.Value
-                         + Vector3.up * 1f;
-
-            if (Physics.Raycast(position + Vector3.up * 4f, Vector3.down, out var ground, 20f,
-                                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-            {
-                position.y = ground.point.y + 0.2f;
-            }
-
             try
             {
-                PhotonNetwork.InstantiateRoomObject(PrefabPath, position, Quaternion.identity);
+                PhotonNetwork.InstantiateRoomObject(PrefabPath, spot + Vector3.up * 0.2f,
+                                                    Quaternion.identity);
                 placed++;
             }
             catch (System.Exception e)
@@ -248,8 +236,8 @@ internal class ModCrateSpawner : MonoBehaviour
             }
         }
 
-        Plugin.Log.LogInfo($"Cajas del mod en el tramo {segment}: {placed} para " +
-                           $"{luggage.Count} maleta(s).");
+        Plugin.Log.LogInfo($"Cajas del mod en el tramo {segment}: {placed} repartidas " +
+                           $"(pedidas {count}, {luggage.Count} maletas de referencia).");
     }
 
     static string PrefabPath => ModCrate.PrefabId;

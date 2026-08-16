@@ -72,6 +72,8 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> CfgCratesPerLuggage = null!;
     internal static ConfigEntry<float> CfgCrateScatter = null!;
     internal static ConfigEntry<float> CfgCrateSize = null!;
+    internal static ConfigEntry<float> CfgCrateApartFromLuggage = null!;
+    internal static ConfigEntry<float> CfgCrateApart = null!;
     internal static ConfigEntry<string> CfgWeaponRarity = null!;
     internal static ConfigEntry<float> CfgOrbSoundNear = null!;
     internal static ConfigEntry<float> CfgOrbSoundFar = null!;
@@ -136,6 +138,8 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<bool> CfgMapBuffs = null!;
     internal static ConfigEntry<float> CfgBuffsPerLuggage = null!;
     internal static ConfigEntry<float> CfgBuffScatter = null!;
+    internal static ConfigEntry<float> CfgBuffApartFromLuggage = null!;
+    internal static ConfigEntry<float> CfgBuffApart = null!;
 
     /// <summary>Tecla del panel de equipos, ya traducida. F3 la usa el ajustador de armas.</summary>
     internal static UnityEngine.InputSystem.Key TeamMenuKey
@@ -461,6 +465,17 @@ public partial class Plugin : BaseUnityPlugin
                 "tantas cajas como maletas.",
                 new AcceptableValueRange<float>(0.05f, 3f)));
 
+        CfgCrateApartFromLuggage = Config.Bind(
+            "Armas", "CrateApartFromLuggage", 18f,
+            new ConfigDescription("Metros mínimos entre una caja del mod y cualquier maleta. " +
+                "Existe para que no salgan las dos cosas en el mismo montón.",
+                new AcceptableValueRange<float>(0f, 80f)));
+
+        CfgCrateApart = Config.Bind(
+            "Armas", "CrateApart", 25f,
+            new ConfigDescription("Metros mínimos entre dos cajas del mod.",
+                new AcceptableValueRange<float>(0f, 120f)));
+
         CfgCrateSize = Config.Bind(
             "Armas", "CrateSize", 0.9f,
             new ConfigDescription("Lado mayor de la caja del mod, en metros. El modelo se " +
@@ -741,6 +756,16 @@ public partial class Plugin : BaseUnityPlugin
             new ConfigDescription("Power-ups por cada maleta del mapa. Por encima de 1 sale " +
                 "más de uno por maleta.",
                 new AcceptableValueRange<float>(0.05f, 4f)));
+
+        CfgBuffApartFromLuggage = Config.Bind(
+            "Equipos", "BuffApartFromLuggage", 15f,
+            new ConfigDescription("Metros mínimos entre un power-up y cualquier maleta.",
+                new AcceptableValueRange<float>(0f, 80f)));
+
+        CfgBuffApart = Config.Bind(
+            "Equipos", "BuffApart", 20f,
+            new ConfigDescription("Metros mínimos entre dos power-ups.",
+                new AcceptableValueRange<float>(0f, 120f)));
 
         CfgBuffScatter = Config.Bind(
             "Equipos", "BuffScatter", 4f,
