@@ -30,7 +30,8 @@ internal static class ConfigMigration
     /// 7: equipos x3 de separación y power-ups x3.
     /// 8: cajas por categoría con dieciocho power-ups dentro.
     /// 9: casi todos los power-ups en tres fuerzas.
-    internal const int Version = 9;
+    /// 10: mochila de vuelta a 1 pagina; las extra rompian el juego.
+    internal const int Version = 10;
 
     /// <summary>
     /// Secciones que NUNCA se tocan porque guardan decisiones del jugador.

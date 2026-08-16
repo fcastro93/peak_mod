@@ -609,10 +609,13 @@ public partial class Plugin : BaseUnityPlugin
                 new AcceptableValueRange<float>(16f, 160f)));
 
         CfgBackpackPages = Config.Bind(
-            "Pruebas", "BackpackPages", 3,
-            new ConfigDescription("Páginas de la mochila. Cada una son 4 huecos, así que 3 " +
-                "páginas son 12 objetos. OJO: todos los que jueguen juntos tienen que " +
-                "tener el mismo número, o al sincronizar se pierde lo que sobre.",
+            "Pruebas", "BackpackPages", 1,
+            new ConfigDescription(
+                "Páginas de la mochila, de 4 huecos cada una. EN 1 A PROPÓSITO: por encima " +
+                "de eso el juego revienta. Su rueda indexa un array de 5 porciones con el " +
+                "número de hueco, así que con 12 lanza una excepción POR FRAME, y su " +
+                "RefreshVisuals solo prepara los 4 primeros, de modo que los demás se ven " +
+                "pero no se pueden sacar. Súbelo solo si sabes lo que haces.",
                 new AcceptableValueRange<int>(1, 8)));
 
         CfgBackpackPageKey = Config.Bind(
