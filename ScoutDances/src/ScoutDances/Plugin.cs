@@ -122,6 +122,7 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<bool> CfgPullToCampfire = null!;
     internal static ConfigEntry<bool> CfgRandomMap = null!;
     internal static ConfigEntry<bool> CfgFogNoRevive = null!;
+    internal static ConfigEntry<bool> CfgBackpackDebug = null!;
     internal static ConfigEntry<float> CfgBuffFloatHeight = null!;
     internal static ConfigEntry<float> CfgBuffSpinSpeed = null!;
     internal static ConfigEntry<float> CfgBuffBob = null!;
@@ -631,6 +632,12 @@ public partial class Plugin : BaseUnityPlugin
                 "subes, baja también LuggageRarity: si no, suben las armas del mod en la " +
                 "misma proporción que todo lo demás.",
                 new AcceptableValueRange<float>(1f, 5f)));
+
+        CfgBackpackDebug = Config.Bind(
+            "Mochila", "Debug", true,
+            "Escribe en el log lo que pasa al guardar y sacar de la mochila. Sirve para " +
+            "encontrar por qué un hueco no devuelve su item; se puede apagar cuando esté " +
+            "resuelto.");
 
         CfgBuffFloatHeight = Config.Bind(
             "Buffs", "FloatHeight", 1.25f,

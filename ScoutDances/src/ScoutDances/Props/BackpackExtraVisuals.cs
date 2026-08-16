@@ -59,7 +59,21 @@ internal static class BackpackExtraVisuals
     {
         var data = visuals.GetBackpackData();
         var slots = data?.itemSlots;
-        if (slots == null || slots.Length <= Vanilla) return;
+
+        if (slots == null)
+        {
+            if (BackpackDiagnostics.On)
+                Plugin.Log.LogInfo("[mochila] esta mochila no tiene datos; no toco nada.");
+            return;
+        }
+
+        if (slots.Length <= Vanilla)
+        {
+            if (BackpackDiagnostics.On)
+                Plugin.Log.LogInfo($"[mochila] solo {slots.Length} huecos: el juego ya los " +
+                                   "cubre todos, no hay nada extra que preparar.");
+            return;
+        }
 
         for (byte slot = Vanilla; slot < slots.Length; slot++)
         {
@@ -99,12 +113,15 @@ internal static class BackpackExtraVisuals
         var prefab = itemSlot.prefab;
         if (prefab == null) return;
 
+        if (BackpackDiagnostics.On)
+            Plugin.Log.LogInfo($"[mochila] preparo '{prefab.name}' para el hueco {slot + 1}…");
+
         var created = PhotonNetwork.Instantiate("0_Items/" + prefab.name,
                                                 Vector3.zero, Quaternion.identity);
         var item = created != null ? created.GetComponent<Item>() : null;
         if (item == null)
         {
-            Plugin.Log.LogWarning($"No pude crear '{prefab.name}' para el hueco {slot}.");
+            Plugin.Log.LogWarning($"[mochila] no pude crear '{prefab.name}' para el hueco {slot + 1}.");
             return;
         }
 
