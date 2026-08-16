@@ -108,10 +108,24 @@ internal static class BackpackExtraVisuals
             return;
         }
 
-        // Colgarlo del modelo puede fallar: solo hay cuatro anclajes. No importa —lo que
-        // hace falta para poder sacarlo es el registro de abajo, no que se vea.
-        try { visuals.PutItemInBackpack(created, slot); }
-        catch { created.SetActive(false); }
+        // O queda BIEN metido, o no se ofrece. Antes se registraba igual aunque esto
+        // fallara, y esa situación intermedia es peor que no poder sacarlo:
+        // PutItemInBackpack es lo que le dice al item de qué mochila y de qué hueco viene,
+        // y sin ese dato Item.ClearDataFromBackpack se sale por IsNone y NO VACÍA EL HUECO.
+        // El resultado era un icono fantasma que se quedaba ahí, y meter otro item encima
+        // lo hacía desaparecer.
+        try
+        {
+            visuals.PutItemInBackpack(created, slot);
+        }
+        catch (System.Exception e)
+        {
+            Plugin.Log.LogWarning(
+                $"El hueco {slot + 1} no admite item ({e.Message}); lo retiro en vez de " +
+                "dejarlo a medias.");
+            PhotonNetwork.Destroy(created);
+            return;
+        }
 
         visuals.SetSpawnedBackpackItem(slot, item);
 
