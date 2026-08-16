@@ -71,10 +71,15 @@ internal class ModCrate : MonoBehaviour, IInteractible
             PhotonNetwork.Destroy(gameObject);
     }
 
-    /// <summary>Un arma del mod al azar.</summary>
+    /// <summary>Un arma del mod al azar, con el nombre que entiende el juego.</summary>
     /// <remarks>
-    /// Solo armas: los power-ups de velocidad ya se reparten por su cuenta junto a las
-    /// maletas, y meterlos también aquí los duplicaría.
+    /// <b>El nombre lleva prefijo, y ahí estaba el fallo.</b> <c>SpawnItemInHand</c> quiere el
+    /// nombre del PREFAB, no el visible, y PEAKLib registra los nuestros como
+    /// <c>fcastro.ScoutDances:Granada</c>. Pasándole solo "Granada" no encontraba nada: la
+    /// caja se abría, desaparecía y no daba absolutamente nada, sin un solo error.
+    ///
+    /// Solo armas: los power-ups se reparten por su cuenta en sus propias cajas, y meterlos
+    /// también aquí los duplicaría.
     /// </remarks>
     static string PickItem()
     {
@@ -83,13 +88,26 @@ internal class ModCrate : MonoBehaviour, IInteractible
         foreach (var weapon in Plugin.Weapons) pool.Add(weapon.DisplayName.Value);
         if (Plugin.Blaster != null) pool.Add(Plugin.Blaster.DisplayName.Value);
 
-        return pool.Count == 0 ? "" : pool[Random.Range(0, pool.Count)];
+        if (pool.Count == 0) return "";
+
+        return Plugin.Definition.Id + ":" + pool[Random.Range(0, pool.Count)];
     }
 
     void Give(string itemName)
     {
         var character = Character.localCharacter;
         if (character?.refs?.items == null) return;
+
+        // Se comprueba ANTES de pedirlo para distinguir dos fallos que desde fuera se ven
+        // igual —la caja se abre y no pasa nada—: que el item no exista con ese nombre, o
+        // que exista y falle al crearse.
+        if (!Exists(itemName))
+        {
+            Plugin.Log.LogWarning(
+                $"'{itemName}' no está en el ItemDatabase, así que la caja no puede darlo. " +
+                "Si el mod acaba de actualizarse, puede que el nombre haya cambiado.");
+            return;
+        }
 
         try
         {
@@ -99,6 +117,20 @@ internal class ModCrate : MonoBehaviour, IInteractible
         catch (System.Exception e)
         {
             Plugin.Log.LogWarning($"No pude darte '{itemName}': {e.Message}");
+        }
+    }
+
+    static bool Exists(string itemName)
+    {
+        try
+        {
+            return Zorro.Core.SingletonAsset<ItemDatabase>.Instance.Objects
+                .Any(i => i != null &&
+                          string.Equals(i.name, itemName, System.StringComparison.Ordinal));
+        }
+        catch
+        {
+            return true;   // si no se puede consultar, mejor intentarlo que no dar nada
         }
     }
 }
